@@ -17,3 +17,5 @@
 !.github/
 !.github/workflows/
 !.github/workflows/2026-11-19-refresh.yml
+
+.vercel
