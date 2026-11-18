@@ -1,0 +1,14 @@
+{
+  "framework": null,
+  "outputDirectory": "public",
+  "rewrites": [
+    {
+      "source": "/api/data",
+      "destination": "https://raw.githubusercontent.com/roughkyo/kor_uni_ranking/main/data/2026-11-19-data.json"
+    },
+    {
+      "source": "/api/status",
+      "destination": "https://raw.githubusercontent.com/roughkyo/kor_uni_ranking/main/data/2026-11-19-status.json"
+    }
+  ]
+}
