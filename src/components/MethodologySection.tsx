@@ -1,0 +1,190 @@
+import * as React from "react"
+import { ChevronDown, ExternalLink, Info } from "lucide-react"
+import { cn } from "@/lib/utils"
+import {
+  type CompareMode,
+  type EditionSlice,
+  formatExclusionReason,
+  getMetricMeta,
+} from "@/types/ranking"
+
+interface MethodologySectionProps {
+  edition: EditionSlice
+  mode: CompareMode
+}
+
+export function MethodologySection({ edition, mode }: MethodologySectionProps) {
+  const [open, setOpen] = React.useState(false)
+  const [showExcluded, setShowExcluded] = React.useState(false)
+  const { labels } = React.useMemo(() => getMetricMeta(mode), [mode])
+
+  const sensitivityText = React.useMemo(() => {
+    if (mode === "combined") {
+      return "연구량은 기관 전체 규모와 전공 구성에 영향을 받습니다. 세부 점수와 기관별 OpenAlex 원문을 함께 확인하세요."
+    }
+    const topRows = edition.rows.filter((r) => r.rank <= 100)
+    if (edition.rows.length < 100) return ""
+    const overlap = labels.map((label, i) => {
+      const scores = edition.rows
+        .map((r) => r.score - (r.points[i] ?? 0))
+        .sort((a, b) => b - a)
+      const cutoff = scores[99] - 1e-9
+      const count = topRows.filter((r) => r.score - (r.points[i] ?? 0) >= cutoff).length
+      return `${label} 제외 ${count}곳`
+    })
+    return `한 지표를 빼고 다시 계산했을 때 현재 상위권과 겹치는 수 (${topRows.length}곳 중) · ${overlap.join(" / ")}`
+  }, [edition.rows, labels, mode])
+
+  return (
+    <section className="mx-auto w-full max-w-[1380px] px-5 py-6 md:px-10">
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.025] backdrop-blur-xl">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="flex w-full cursor-pointer items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-white/[0.03]"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-orange-300">
+              <Info className="h-4 w-4" />
+            </span>
+            <div>
+              <div className="text-sm font-bold text-white sm:text-base">
+                순위는 어떻게 계산했나요?
+              </div>
+              <div className="text-xs text-zinc-400">
+                종합비교(연구 50 + 학생지원 50) 산식, 배점표, 글로컬대학 반영 기준 및 제외 목록 ({edition.excluded.length}곳)
+              </div>
+            </div>
+          </div>
+          <ChevronDown
+            className={cn(
+              "h-5 w-5 shrink-0 text-zinc-400 transition-transform duration-300",
+              open && "rotate-180"
+            )}
+          />
+        </button>
+
+        {open ? (
+          <div className="space-y-6 border-t border-white/10 px-6 py-6 text-sm leading-relaxed text-zinc-300">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-white/8 bg-black/35 p-5">
+                <h3 className="text-base font-bold text-orange-300">
+                  종합비교 · 연구활동 50점 + 학생지원 50점
+                </h3>
+                <p className="mt-2.5 text-xs leading-relaxed text-zinc-300">
+                  각 공시연도 직전 3개년의 OpenAlex 출판물 수와 인용 수를 각각 25점으로 환산합니다.
+                  항목 점수는 <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[11px] text-orange-200">25 × √(대학 수치 ÷ 비교 집단 최댓값)</code>이며,
+                  학생지원 원점수(100점)의 절반을 더합니다.
+                </p>
+                <p className="mt-2.5 text-xs leading-relaxed text-zinc-400">
+                  국내 교육기관의 한국어 이름과 공시 대학명을 일대일로 대조합니다. 고유하게 확인되지 않거나 3개년 집계가 부족한 대학은 종합 미산정으로 표시하며 학생지원 탭에서 별도 확인할 수 있습니다.
+                </p>
+                <a
+                  href="https://help.openalex.org/data/common-attributes/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-orange-300 hover:underline"
+                >
+                  OpenAlex 연도별 지표 정의 <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+
+              <div className="rounded-2xl border border-white/8 bg-black/35 p-5">
+                <h3 className="text-base font-bold text-cyan-300">
+                  학생지원 · 공시 및 사업 100점
+                </h3>
+                <p className="mt-2.5 text-xs leading-relaxed text-zinc-300">
+                  일반대학 본·분교 및 캠퍼스를 대학알리미 공시 단위로 비교합니다. 공시 8개 항목은 해당 연도 비교 집단의 백분위로 환산하며,
+                  항목 점수는 <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[11px] text-cyan-200">배점 × (N − 평균 등수) ÷ (N − 1)</code>입니다.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[11px]">
+                  {[
+                    "등록금 20",
+                    "장학금 18",
+                    "기숙사 12",
+                    "취업률 12",
+                    "교원당 학생 10",
+                    "교육비 8",
+                    "전임강의 8",
+                    "도서 6",
+                    "글로컬 6",
+                  ].map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-zinc-200"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs leading-relaxed text-zinc-400">
+                  글로컬대학은 2023~2025년 본지정 명단에 따라 지정연도부터 6점을 반영하며, 2026년 충북대·국립한국교통대 지정 취소를 적용했습니다.
+                </p>
+              </div>
+            </div>
+
+            {sensitivityText ? (
+              <p className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-xs text-zinc-400">
+                {sensitivityText}
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+              <span>다른 국제 대학평가 참고:</span>
+              <a
+                href="https://support.qs.com/hc/en-gb/articles/4405955370898-QS-World-University-Rankings"
+                target="_blank"
+                rel="noreferrer"
+                className="text-zinc-200 underline underline-offset-4 hover:text-orange-300"
+              >
+                QS · 평판과 인용
+              </a>
+              <span>/</span>
+              <a
+                href="https://www.timeshighereducation.com/world-university-rankings/methodology"
+                target="_blank"
+                rel="noreferrer"
+                className="text-zinc-200 underline underline-offset-4 hover:text-orange-300"
+              >
+                THE · 교육과 연구
+              </a>
+              <span>/</span>
+              <a
+                href="https://www.shanghairanking.com/methodology/arwu/2026"
+                target="_blank"
+                rel="noreferrer"
+                className="text-zinc-200 underline underline-offset-4 hover:text-orange-300"
+              >
+                ARWU · 연구 성과
+              </a>
+            </div>
+
+            <div className="border-t border-white/10 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowExcluded((v) => !v)}
+                className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-zinc-200 hover:text-orange-300"
+              >
+                산정 제외 {edition.excluded.length}곳과 사유{" "}
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform",
+                    showExcluded && "rotate-180"
+                  )}
+                />
+              </button>
+              {showExcluded ? (
+                <p className="mt-3 max-h-48 overflow-auto rounded-xl border border-white/8 bg-black/40 p-3.5 text-xs leading-relaxed text-zinc-400">
+                  {edition.excluded
+                    .map((x) => `${x.name} (${formatExclusionReason(x)})`)
+                    .join(" / ")}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
+}
