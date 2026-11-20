@@ -1,4 +1,9 @@
 import GlassFolder, { type FolderFile } from "@/components/ui/glass-folder-cards"
+import type { ThemeMode } from "@/components/SplineMoodHero"
+
+interface ArchiveFoldersSectionProps {
+  theme: ThemeMode
+}
 
 const DISCLOSURE_FILES: FolderFile[] = [
   {
@@ -81,16 +86,16 @@ const GLOBAL_FILES: FolderFile[] = [
   },
 ]
 
-export function ArchiveFoldersSection() {
+export function ArchiveFoldersSection({ theme }: ArchiveFoldersSectionProps) {
   return (
     <section
       id="archive"
-      className="relative overflow-hidden border-t border-white/10 bg-[#050609] py-24"
+      className="relative overflow-hidden border-t border-zinc-200/80 bg-[#f0f0ec] py-24 transition-colors duration-300 dark:border-white/10 dark:bg-[#050609]"
     >
       {/* Dotted architect desk backdrop */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 text-white opacity-[0.09]"
+        className="pointer-events-none absolute inset-0 text-zinc-900 opacity-[0.11] dark:text-white dark:opacity-[0.09]"
         style={{
           backgroundImage: "radial-gradient(currentColor 1.1px, transparent 1.4px)",
           backgroundSize: "24px 24px",
@@ -99,15 +104,15 @@ export function ArchiveFoldersSection() {
 
       <div className="relative mx-auto w-full max-w-[1380px] px-5 md:px-10">
         <div className="mb-12 max-w-2xl">
-          <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-orange-400">
+          <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-orange-600 dark:text-orange-400">
             03 / INTERACTIVE GLASS ARCHIVE
           </div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+          <h2 className="text-3xl font-extrabold tracking-tight text-zinc-950 dark:text-white sm:text-4xl">
             공시 · 입시 원자료 아카이브
           </h2>
-          <p className="mt-2.5 text-sm leading-relaxed text-zinc-400">
+          <p className="mt-2.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
             핵심 공시·입시·국제평가 원자료 카드가 폴더 위로 미리 꺼내져 있습니다.
-            원하는 폴더를 <strong className="text-white">클릭하면 크게 확대되며 펼쳐지고</strong>, 개별 카드를 누르면 공식 원문 페이지로 바로 이동합니다.
+            원하는 폴더를 <strong className="text-zinc-950 dark:text-white">클릭하면 크게 확대되며 펼쳐지고</strong>, 개별 카드를 누르면 공식 원문 페이지로 바로 이동합니다.
           </p>
         </div>
 
@@ -117,7 +122,7 @@ export function ArchiveFoldersSection() {
             <GlassFolder
               label="공시 · 연구 원자료"
               meta="4개 공식 출처"
-              tone="dark"
+              tone={theme}
               art="aurora"
               seed={3}
               action="more"
@@ -161,7 +166,7 @@ export function ArchiveFoldersSection() {
             <GlassFolder
               label="입시 · 장학 포털"
               meta="어디가 · 장학재단"
-              tone="dark"
+              tone={theme}
               art="ember"
               seed={11}
               action="more"
@@ -205,7 +210,7 @@ export function ArchiveFoldersSection() {
             <GlassFolder
               label="국제평가 · 갱신 이력"
               meta="THE · QS · ARWU"
-              tone="dark"
+              tone={theme}
               art="dusk"
               seed={7}
               action="more"

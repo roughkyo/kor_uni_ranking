@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: "Noto Sans KR", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-serif: "Instrument Serif", Georgia, serif;
@@ -16,8 +18,21 @@
   --color-accent-foreground: var(--accent-foreground);
 }
 
-:root,
+:root {
+  color-scheme: light;
+  --background: #f5f5f2;
+  --foreground: #14151a;
+  --card: #ffffff;
+  --card-foreground: #14151a;
+  --muted: #ecece8;
+  --muted-foreground: #5f6573;
+  --border: rgba(20, 21, 26, 0.1);
+  --accent: #ea580c;
+  --accent-foreground: #ffffff;
+}
+
 .dark {
+  color-scheme: dark;
   --background: #06070a;
   --foreground: #f4f4f6;
   --card: #0c0e14;
@@ -32,7 +47,6 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    color-scheme: dark;
   }
 
   body {
@@ -40,6 +54,7 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
@@ -47,25 +62,23 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Subtle architectural noise overlay */
 .bg-noise {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
-/* Custom sleek dark scrollbar */
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #08090d;
+  background: var(--background);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(120, 125, 138, 0.35);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 110, 64, 0.45);
+  background: rgba(234, 88, 12, 0.55);
 }
 
 @media (prefers-reduced-motion: reduce) {

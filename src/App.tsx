@@ -1,9 +1,10 @@
 import * as React from "react"
+import { Moon, Sun } from "lucide-react"
 import { ArchiveFoldersSection } from "@/components/ArchiveFoldersSection"
 import { MethodologySection } from "@/components/MethodologySection"
 import { RaceSection } from "@/components/RaceSection"
 import { RankingTableSection } from "@/components/RankingTableSection"
-import { SplineMoodHero } from "@/components/SplineMoodHero"
+import { SplineMoodHero, type ThemeMode } from "@/components/SplineMoodHero"
 import {
   type CompareMode,
   type DisclosurePayload,
@@ -13,10 +14,34 @@ import {
   formatKst,
 } from "@/types/ranking"
 
+const THEME_STORAGE_KEY = "kor_uni_ranking_theme_v1"
+
 export default function App() {
   const [rawBook, setRawBook] = React.useState<DisclosurePayload | null>(null)
   const [status, setStatus] = React.useState<DisclosureStatus | null>(null)
   const [loadError, setLoadError] = React.useState<string | null>(null)
+
+  const [theme, setTheme] = React.useState<ThemeMode>(() => {
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY)
+      return saved === "light" ? "light" : "dark"
+    } catch {
+      return "dark"
+    }
+  })
+
+  React.useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark")
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme)
+    } catch {
+      // ignore storage errors
+    }
+  }, [theme])
+
+  const handleToggleTheme = React.useCallback(() => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"))
+  }, [])
 
   const [mode, setMode] = React.useState<CompareMode>("combined")
   const [year, setYear] = React.useState<number | null>(null)
@@ -177,11 +202,13 @@ export default function App() {
       : `${latestEdition?.year ?? 2026}`
 
   return (
-    <div className="min-h-screen bg-[#06070a] text-zinc-100">
+    <div className="min-h-screen bg-[#f5f5f2] text-zinc-900 transition-colors duration-300 dark:bg-[#06070a] dark:text-zinc-100">
       {/* 1. Spline Retrofuturism Diagonal Fluted Glass Hero */}
       <SplineMoodHero
         mode={mode}
         onModeChange={handleModeChange}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
         latestYear={latestEdition?.year ?? 2026}
         schoolCount={currentEdition?.rows.length ?? 144}
         yearRange={yearRange}
@@ -191,8 +218,8 @@ export default function App() {
       {/* Loading / Error State Fallback */}
       {!currentEdition ? (
         <div className="mx-auto max-w-[1380px] px-5 py-24 text-center md:px-10">
-          <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-4 text-sm text-zinc-300">
-            <span className="h-2.5 w-2.5 animate-ping rounded-full bg-orange-400" />
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-6 py-4 text-sm text-zinc-700 shadow-xs dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-300">
+            <span className="h-2.5 w-2.5 animate-ping rounded-full bg-orange-500" />
             {loadError ?? "공시 데이터를 불러오는 중입니다…"}
           </div>
         </div>
@@ -203,6 +230,7 @@ export default function App() {
             editions={editions}
             edition={currentEdition}
             mode={mode}
+            theme={theme}
             onModeChange={handleModeChange}
             selectedId={selectedId}
             onSelectSchool={handleSelectSchool}
@@ -245,13 +273,13 @@ export default function App() {
       )}
 
       {/* 5. Interactive Frosted Glass Archive Folders */}
-      <ArchiveFoldersSection />
+      <ArchiveFoldersSection theme={theme} />
 
       {/* Footer */}
-      <footer className="border-t border-white/10 bg-[#040507]">
-        <div className="mx-auto flex w-full max-w-[1380px] flex-col justify-between gap-4 px-5 py-10 text-xs text-zinc-500 sm:flex-row sm:items-center md:px-10">
+      <footer className="border-t border-zinc-200/80 bg-[#ecece8] transition-colors duration-300 dark:border-white/10 dark:bg-[#040507]">
+        <div className="mx-auto flex w-full max-w-[1380px] flex-col justify-between gap-4 px-5 py-10 text-xs text-zinc-600 dark:text-zinc-500 sm:flex-row sm:items-center md:px-10">
           <div>
-            <div className="font-semibold text-zinc-300">
+            <div className="font-semibold text-zinc-900 dark:text-zinc-300">
               대학 공시 레이스 · 자료 제공: 교육부·한국대학교육협의회 대학알리미, OpenAlex
             </div>
             <div className="mt-1">
@@ -264,6 +292,17 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Always-accessible floating theme switcher */}
+      <button
+        type="button"
+        onClick={handleToggleTheme}
+        aria-label={theme === "dark" ? "화이트 모드로 전환" : "다크 모드로 전환"}
+        title={theme === "dark" ? "화이트 모드로 전환" : "다크 모드로 전환"}
+        className="fixed right-5 bottom-5 z-50 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-zinc-300/90 bg-white/90 text-zinc-800 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:bg-white dark:border-white/15 dark:bg-[#141720]/90 dark:text-amber-300 dark:hover:bg-[#1c202c]"
+      >
+        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4 text-indigo-600" />}
+      </button>
     </div>
   )
 }

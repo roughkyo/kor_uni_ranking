@@ -1,14 +1,18 @@
 import * as React from "react"
 import * as THREE from "three"
 import { motion, useReducedMotion } from "framer-motion"
-import { ArrowDown } from "lucide-react"
+import { ArrowDown, Moon, Sun } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CompareMode, DisclosureStatus } from "@/types/ranking"
 import { formatKst } from "@/types/ranking"
 
+export type ThemeMode = "dark" | "light"
+
 interface SplineMoodHeroProps {
   mode: CompareMode
   onModeChange: (mode: CompareMode) => void
+  theme: ThemeMode
+  onToggleTheme: () => void
   latestYear: number
   schoolCount: number
   yearRange: string
@@ -24,7 +28,7 @@ const VERT = /* glsl */ `
 `
 
 // Retrofuturism diagonal fluted glass + interactive optical magnifier lens &
-// cursor-driven chromatic spectrum spotlight (inspired by both Spline Retrofuturism & interactive reveal reference).
+// chromatic spectrum hover shift, supporting smooth dark <-> light theme morphing.
 const FRAG = /* glsl */ `
   precision highp float;
   varying vec2 vUv;
@@ -34,6 +38,7 @@ const FRAG = /* glsl */ `
   uniform float uHover;
   uniform float uSpeed;
   uniform float uMode;
+  uniform float uLight;
 
   float hash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -41,9 +46,7 @@ const FRAG = /* glsl */ `
     return fract((p3.x + p3.y) * p3.z);
   }
 
-  // Smooth cosine spectrum palette for cursor-driven chromatic hover shift
   vec3 spectrum(float phase) {
-    // Sweeps fluidly: emerald-cyan -> electric blue -> neon violet-magenta -> coral-gold
     vec3 a = vec3(0.55, 0.52, 0.62);
     vec3 b = vec3(0.45, 0.44, 0.42);
     vec3 c = vec3(1.0, 1.0, 1.0);
@@ -51,7 +54,6 @@ const FRAG = /* glsl */ `
     return a + b * cos(6.28318 * (c * phase + d));
   }
 
-  // Evaluate the glowing sunset light field behind the fluted glass
   vec3 evalSunsetField(vec2 uvRot, vec2 orbPos, float t, float modeMix) {
     vec2 d = uvRot - orbPos;
     float dist = length(d * vec2(1.18, 1.12));
@@ -81,25 +83,21 @@ const FRAG = /* glsl */ `
     return hue * intensity;
   }
 
-  // Evaluate interactive cursor-revealed chromatic energy field (wakes up hidden glass bars under pointer)
   vec3 evalCursorField(vec2 uvRot, vec2 mouseRot, vec2 mouseUv, float t, float hover) {
     if (hover <= 0.001) return vec3(0.0);
     vec2 dm = uvRot - mouseRot;
     float md = length(dm);
     float spot = exp(-md * md * 11.5) * 1.35 + exp(-md * 4.8) * 0.25;
 
-    // Color phase shifts dramatically as the user moves cursor across X/Y
     float phase = mouseUv.x * 0.95 + mouseUv.y * 0.42 + t * 0.08 + dm.x * 0.65;
     vec3 colA = spectrum(phase);
     vec3 colB = spectrum(phase + 0.18);
     vec3 col = mix(colA, colB, smoothstep(-0.25, 0.25, dm.y));
 
-    // Boost saturation & crisp luminosity
     return col * spot * hover * 1.15;
   }
 
-  // Render the diagonal fluted glass array at any given screen coordinate p (enables optical lens magnification)
-  vec3 sampleGlassScene(vec2 p, float aspect, vec2 mouseP, vec2 mouseUv, float t, float hover, float modeMix, float chromaBoost, out float outLight) {
+  vec3 sampleGlassScene(vec2 p, float aspect, vec2 mouseP, vec2 mouseUv, float t, float hover, float modeMix, float lightMix, float chromaBoost, out float outLight) {
     float anchorX = aspect > 1.05 ? 0.16 * aspect : 0.04;
     vec2 q = p - vec2(anchorX, 0.04);
 
@@ -126,7 +124,6 @@ const FRAG = /* glsl */ `
     float refractU = barCenterU + lensCurve * slatW * 0.24 - pow(max(0.0, f), 2.2) * slatW * 0.52;
     float refractV = rot.y * (1.0 - 0.08 * (1.0 - lensCurve * lensCurve)) + (f - 0.5) * 0.032;
 
-    // Dispersion expands slightly inside the magnifier lens / on fast hover sweeps
     float disp = 0.008 + chromaBoost * 0.016;
 
     vec2 uvR = vec2(refractU + disp, refractV);
@@ -143,7 +140,6 @@ const FRAG = /* glsl */ `
     vec3 curB = evalCursorField(uvB, mouseRot, mouseUv, t, hover);
     vec3 curRefracted = vec3(curR.r, curG.g, curB.b);
 
-    // Inside the cursor spotlight, shift & replace the local warm hue with the interactive spectrum
     float curProx = exp(-length(rot - mouseRot) * 4.4) * hover;
     vec3 refracted = mix(sunRefracted, sunRefracted * 0.35 + curRefracted * 1.15, clamp(curProx * 1.15, 0.0, 0.92));
 
@@ -155,7 +151,6 @@ const FRAG = /* glsl */ `
     float bevelRim = exp(-pow((f - 0.945) / 0.042, 2.0)) * (0.85 + curProx * 0.55);
     float microHighlight = exp(-pow((f - 0.968) / 0.014, 2.0)) * (0.55 + curProx * 0.65);
 
-    // Sunset bars taper organically; cursor spotlight wakes up even dark outer bars!
     float sunAlong = exp(-pow((rot.y - orbRot.y * 0.72) / 0.38, 2.0));
     float curAlong = exp(-pow((rot.y - mouseRot.y) / 0.34, 2.0)) * hover;
     float alongFade = max(sunAlong, curAlong);
@@ -163,13 +158,21 @@ const FRAG = /* glsl */ `
     float totalLight = length(refracted);
     outLight = totalLight;
 
-    vec3 glassColor = refracted * bodyShade * barMask * (0.2 + 0.8 * alongFade);
+    vec3 darkGlass = refracted * bodyShade * barMask * (0.2 + 0.8 * alongFade);
     vec3 rimTint = mix(refracted * 1.5, vec3(1.0, 0.96, 0.92), 0.45);
-    glassColor += rimTint * (bevelRim + microHighlight) * sharpRight * smoothstep(0.04, 0.34, totalLight) * alongFade;
+    darkGlass += rimTint * (bevelRim + microHighlight) * sharpRight * smoothstep(0.04, 0.34, totalLight) * alongFade;
+    darkGlass += (evalSunsetField(rot, orbRot, t, modeMix) + evalCursorField(rot, mouseRot, mouseUv, t, hover) * 0.65) * 0.035 * alongFade;
 
-    vec3 deepAmbient = (evalSunsetField(rot, orbRot, t, modeMix) + evalCursorField(rot, mouseRot, mouseUv, t, hover) * 0.65) * 0.035 * alongFade;
+    // In light mode: warm alabaster paper canvas with luminous coral/amber/teal frosted glass ribs
+    vec3 lightPaper = vec3(0.962, 0.959, 0.945);
+    float barPresence = clamp(totalLight * 0.72, 0.0, 1.0) * (0.2 + 0.8 * alongFade);
+    vec3 lightTint = mix(vec3(0.94, 0.48, 0.28), normalize(refracted + 0.001) * 0.95, 0.78);
+    vec3 lightGlass = mix(lightPaper, lightTint, barPresence * barMask * 0.72 * mix(0.65, 1.0, f));
+    // Crisp white specular edge on sunlit glass bars + soft architectural groove shadow
+    lightGlass += vec3(1.0) * (bevelRim * 0.45 + microHighlight * 0.35) * barPresence;
+    lightGlass -= vec3(0.11, 0.09, 0.08) * (1.0 - sharpRight) * barPresence * 0.85;
 
-    return glassColor + deepAmbient;
+    return mix(vec3(0.043, 0.043, 0.046) + darkGlass, lightGlass, lightMix);
   }
 
   void main() {
@@ -177,75 +180,73 @@ const FRAG = /* glsl */ `
     vec2 p = (vUv - 0.5) * vec2(aspect, 1.0);
     vec2 mouseP = (uMouse - 0.5) * vec2(aspect, 1.0);
 
-    // ── Optical Magnifier Lens (Spherical Convex Glass Loupe around cursor) ──
     vec2 dLens = p - mouseP;
     float distLens = length(dLens);
     float lensRadius = 0.25;
     float normR = clamp(distLens / lensRadius, 0.0, 1.0);
 
-    // Smooth bell-shaped magnification factor: pulls coordinates inward to magnify by ~1.36x
     float inside = smoothstep(1.0, 0.0, normR) * uHover;
     float pinch = 1.0 - inside * (0.30 + uSpeed * 0.08) * (1.0 - normR * normR * 0.45);
     vec2 lensP = mouseP + dLens * pinch;
 
-    // Chromatic RGB radial split along the magnifier rim for real optical glass feel
     float rimZone = exp(-pow((normR - 0.88) / 0.14, 2.0)) * uHover;
     vec2 radialDir = distLens > 0.0001 ? dLens / distLens : vec2(0.0);
     float lensSplit = (0.0045 + uSpeed * 0.004) * rimZone;
 
     float lightVal = 0.0;
     float tmpL = 0.0;
-    vec3 glassCol;
+    vec3 color;
     if (rimZone > 0.01) {
-      vec3 cR = sampleGlassScene(lensP + radialDir * lensSplit, aspect, mouseP, uMouse, uTime, uHover, uMode, inside + rimZone, lightVal);
-      vec3 cG = sampleGlassScene(lensP,                         aspect, mouseP, uMouse, uTime, uHover, uMode, inside,           tmpL);
-      vec3 cB = sampleGlassScene(lensP - radialDir * lensSplit, aspect, mouseP, uMouse, uTime, uHover, uMode, inside + rimZone, tmpL);
-      glassCol = vec3(cR.r, cG.g, cB.b);
+      vec3 cR = sampleGlassScene(lensP + radialDir * lensSplit, aspect, mouseP, uMouse, uTime, uHover, uMode, uLight, inside + rimZone, lightVal);
+      vec3 cG = sampleGlassScene(lensP,                         aspect, mouseP, uMouse, uTime, uHover, uMode, uLight, inside,           tmpL);
+      vec3 cB = sampleGlassScene(lensP - radialDir * lensSplit, aspect, mouseP, uMouse, uTime, uHover, uMode, uLight, inside + rimZone, tmpL);
+      color = vec3(cR.r, cG.g, cB.b);
       lightVal = max(lightVal, tmpL);
     } else {
-      glassCol = sampleGlassScene(lensP, aspect, mouseP, uMouse, uTime, uHover, uMode, inside, lightVal);
+      color = sampleGlassScene(lensP, aspect, mouseP, uMouse, uTime, uHover, uMode, uLight, inside, lightVal);
     }
 
-    // Subtle crisp glass loupe rim ring & specular sheen at the magnifier edge
     float ringSharp = exp(-pow((normR - 0.985) / 0.022, 2.0)) * uHover;
     float ringSoft  = exp(-pow((normR - 0.96) / 0.09, 2.0)) * uHover;
     vec3 lensHue = spectrum(uMouse.x * 0.95 + uMouse.y * 0.42 + uTime * 0.08);
-    // Directional specular glint on top-left of lens rim
     float rimGlint = pow(max(0.0, dot(radialDir, normalize(vec2(-0.65, 0.75)))), 3.0);
-    vec3 lensOverlay =
+
+    vec3 darkRimOverlay =
       mix(lensHue, vec3(1.0), 0.55) * ringSharp * (0.28 + 0.55 * rimGlint) +
       lensHue * ringSoft * 0.09;
+    vec3 lightRimOverlay =
+      mix(lensHue * 0.7, vec3(0.15), 0.4) * ringSharp * 0.35;
 
-    // Subtle faint micro-grid revealed exclusively inside the magnifier loupe
     vec2 gridUv = fract(lensP * 14.0);
     float dotGrid = smoothstep(0.12, 0.03, length(gridUv - 0.5));
-    vec3 loupeGrid = mix(lensHue, vec3(1.0), 0.35) * dotGrid * inside * 0.14;
+    vec3 darkGrid = mix(lensHue, vec3(1.0), 0.35) * dotGrid * inside * 0.14;
+    vec3 lightGrid = -vec3(0.14) * dotGrid * inside * 0.65;
 
-    // Base matte charcoal-obsidian canvas (#0B0B0C)
-    vec3 baseBg = vec3(0.043, 0.043, 0.046);
-    vec3 color = baseBg + glassCol + lensOverlay + loupeGrid;
+    color += mix(darkRimOverlay + darkGrid, -lightRimOverlay + lightGrid, uLight);
 
-    // Soft filmic tone mapping
-    color = color / (1.0 + color * 0.40);
-    color = pow(max(color, 0.0), vec3(0.96));
+    // Filmic tone mapping mainly for dark HDR highlights
+    vec3 mappedDark = color / (1.0 + max(color, 0.0) * 0.40);
+    mappedDark = pow(max(mappedDark, 0.0), vec3(0.96));
+    color = mix(mappedDark, clamp(color, 0.0, 1.0), uLight);
 
-    // Pervasive fine analog film grain
     float g1 = hash12(gl_FragCoord.xy + fract(uTime * 0.07) * 100.0);
     float g2 = hash12(gl_FragCoord.xy * 0.5 + 17.3);
-    float grain = ((g1 * 0.72 + g2 * 0.28) - 0.5) * 0.076;
-    color += grain * (0.75 + 0.50 * clamp(lightVal + inside * 0.4, 0.0, 1.0));
+    float grainAmp = mix(0.074, 0.036, uLight);
+    float grain = ((g1 * 0.72 + g2 * 0.28) - 0.5) * grainAmp;
+    color += grain * (0.75 + 0.45 * clamp(lightVal + inside * 0.4, 0.0, 1.0));
 
-    // Subtle edge vignette
-    float vig = 1.0 - dot((vUv - 0.5) * 1.05, (vUv - 0.5) * 1.05) * 0.35;
+    float vig = 1.0 - dot((vUv - 0.5) * 1.05, (vUv - 0.5) * 1.05) * mix(0.35, 0.08, uLight);
     color *= clamp(vig, 0.65, 1.0);
 
-    gl_FragColor = vec4(max(color, 0.0), 1.0);
+    gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
   }
 `
 
 export function SplineMoodHero({
   mode,
   onModeChange,
+  theme,
+  onToggleTheme,
   latestYear,
   schoolCount,
   yearRange,
@@ -255,10 +256,15 @@ export function SplineMoodHero({
   const mountRef = React.useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
   const modeTargetRef = React.useRef(mode === "combined" ? 0 : 1)
+  const lightTargetRef = React.useRef(theme === "light" ? 1 : 0)
 
   React.useEffect(() => {
     modeTargetRef.current = mode === "combined" ? 0 : 1
   }, [mode])
+
+  React.useEffect(() => {
+    lightTargetRef.current = theme === "light" ? 1 : 0
+  }, [theme])
 
   React.useEffect(() => {
     const container = mountRef.current
@@ -298,6 +304,7 @@ export function SplineMoodHero({
       uHover: { value: 0 },
       uSpeed: { value: 0 },
       uMode: { value: modeTargetRef.current },
+      uLight: { value: lightTargetRef.current },
     }
 
     const geometry = new THREE.PlaneGeometry(2, 2)
@@ -362,6 +369,7 @@ export function SplineMoodHero({
       uniforms.uSpeed.value += (speedTarget - uniforms.uSpeed.value) * 0.1
       speedTarget *= 0.88
       uniforms.uMode.value += (modeTargetRef.current - uniforms.uMode.value) * 0.055
+      uniforms.uLight.value += (lightTargetRef.current - uniforms.uLight.value) * 0.08
       renderer.render(scene, camera)
     }
     raf = requestAnimationFrame(tick)
@@ -384,9 +392,9 @@ export function SplineMoodHero({
     <section
       ref={sectionRef}
       id="top"
-      className="relative flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#0b0b0c]"
+      className="relative flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#f5f5f2] transition-colors duration-300 dark:bg-[#0b0b0c]"
     >
-      {/* Full-bleed Diagonal Fluted Glass + Interactive Magnifier Loupe & Chromatic Spotlight */}
+      {/* Full-bleed Diagonal Fluted Glass + Interactive Magnifier Loupe */}
       <div
         ref={mountRef}
         aria-hidden="true"
@@ -397,35 +405,56 @@ export function SplineMoodHero({
       <header className="relative z-20 mx-auto flex w-full max-w-[1440px] items-center justify-between px-6 py-7 md:px-12">
         <a
           href="#top"
-          className="flex items-center gap-2.5 text-sm font-medium tracking-[-0.02em] text-white/90 transition-opacity hover:opacity-100"
+          className="flex items-center gap-2.5 text-sm font-medium tracking-[-0.02em] text-zinc-900 transition-opacity hover:opacity-80 dark:text-white/90"
         >
-          <span className="inline-block h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.9)]" />
+          <span className="inline-block h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.8)]" />
           <span>대학 공시 레이스</span>
-          <span className="font-mono text-[11px] text-white/35">
+          <span className="font-mono text-[11px] text-zinc-400 dark:text-white/35">
             / {latestYear}
           </span>
         </a>
 
-        <nav className="hidden items-center gap-7 text-xs font-normal tracking-tight text-white/60 md:flex">
-          <a href="#race" className="transition-colors hover:text-white">
+        <nav className="hidden items-center gap-7 text-xs font-medium tracking-tight text-zinc-600 dark:text-white/60 md:flex">
+          <a href="#race" className="transition-colors hover:text-zinc-950 dark:hover:text-white">
             순위 레이스
           </a>
-          <a href="#ranking" className="transition-colors hover:text-white">
+          <a href="#ranking" className="transition-colors hover:text-zinc-950 dark:hover:text-white">
             전체 순위표
           </a>
-          <a href="#archive" className="transition-colors hover:text-white">
+          <a href="#archive" className="transition-colors hover:text-zinc-950 dark:hover:text-white">
             자료 아카이브
           </a>
         </nav>
 
-        <div className="flex items-center gap-2 font-mono text-[11px] text-white/55">
-          <span
-            className={cn(
-              "inline-block h-1.5 w-1.5 rounded-full",
-              status?.error ? "bg-amber-400" : "bg-emerald-400"
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-2 font-mono text-[11px] text-zinc-600 dark:text-white/55 sm:flex">
+            <span
+              className={cn(
+                "inline-block h-1.5 w-1.5 rounded-full",
+                status?.error ? "bg-amber-500" : "bg-emerald-500 dark:bg-emerald-400"
+              )}
+            />
+            <span>{status?.error ? "갱신 지연" : "실시간 공시"}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            aria-label={theme === "dark" ? "화이트 모드로 전환" : "다크 모드로 전환"}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-900/15 bg-white/75 px-3 py-1.5 text-xs font-medium text-zinc-800 shadow-sm backdrop-blur-md transition-all hover:bg-white dark:border-white/15 dark:bg-black/45 dark:text-zinc-100 dark:hover:bg-white/15"
+          >
+            {theme === "dark" ? (
+              <>
+                <Sun className="h-3.5 w-3.5 text-amber-300" />
+                <span>화이트</span>
+              </>
+            ) : (
+              <>
+                <Moon className="h-3.5 w-3.5 text-indigo-600" />
+                <span>다크</span>
+              </>
             )}
-          />
-          <span>{status?.error ? "갱신 지연" : "실시간 공시"}</span>
+          </button>
         </div>
       </header>
 
@@ -436,7 +465,7 @@ export function SplineMoodHero({
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl font-medium leading-[1.08] tracking-[-0.04em] text-[#f5f5f5] sm:text-6xl lg:text-[68px]"
+            className="text-4xl font-semibold leading-[1.08] tracking-[-0.04em] text-zinc-950 dark:font-medium dark:text-[#f5f5f5] sm:text-6xl lg:text-[68px]"
           >
             {mode === "combined" ? "대학 공시 레이스" : "학생지원 레이스"}
           </motion.h1>
@@ -445,7 +474,7 @@ export function SplineMoodHero({
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-5 max-w-md text-sm leading-[1.65] font-normal text-white/70 sm:text-[17px]"
+            className="mt-5 max-w-md text-sm leading-[1.65] font-normal text-zinc-700 dark:text-white/70 sm:text-[17px]"
           >
             {mode === "combined" ? (
               <>
@@ -471,7 +500,7 @@ export function SplineMoodHero({
           >
             <a
               href="#race"
-              className="group inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-semibold text-black transition-colors hover:bg-orange-100 sm:text-sm"
+              className="group inline-flex items-center gap-2 rounded-full bg-zinc-950 px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-orange-100 sm:text-sm"
             >
               순위 레이스 보기
               <ArrowDown className="h-3.5 w-3.5 transition-transform group-hover:translate-y-0.5" />
@@ -480,7 +509,7 @@ export function SplineMoodHero({
             <div
               role="tablist"
               aria-label="비교 기준 선택"
-              className="inline-flex rounded-full border border-white/15 bg-black/40 p-1 backdrop-blur-md"
+              className="inline-flex rounded-full border border-zinc-900/12 bg-white/70 p-1 backdrop-blur-md dark:border-white/15 dark:bg-black/40"
             >
               <button
                 type="button"
@@ -490,8 +519,8 @@ export function SplineMoodHero({
                 className={cn(
                   "cursor-pointer rounded-full px-3.5 py-1.5 text-xs transition-colors",
                   mode === "combined"
-                    ? "bg-white/18 font-medium text-white"
-                    : "text-white/50 hover:text-white/85"
+                    ? "bg-zinc-900 font-medium text-white dark:bg-white/18 dark:text-white"
+                    : "text-zinc-600 hover:text-zinc-950 dark:text-white/50 dark:hover:text-white/85"
                 )}
               >
                 종합 50:50
@@ -504,8 +533,8 @@ export function SplineMoodHero({
                 className={cn(
                   "cursor-pointer rounded-full px-3.5 py-1.5 text-xs transition-colors",
                   mode === "support"
-                    ? "bg-white/18 font-medium text-white"
-                    : "text-white/50 hover:text-white/85"
+                    ? "bg-zinc-900 font-medium text-white dark:bg-white/18 dark:text-white"
+                    : "text-zinc-600 hover:text-zinc-950 dark:text-white/50 dark:hover:text-white/85"
                 )}
               >
                 학생지원만
@@ -518,7 +547,7 @@ export function SplineMoodHero({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.28 }}
-            className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-white/38"
+            className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-zinc-500 dark:text-white/38"
           >
             <span>진학 참고용 · 자체 산정</span>
             <span>·</span>
