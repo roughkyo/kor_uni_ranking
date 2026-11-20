@@ -458,7 +458,7 @@ export function RaceSection({
           </div>
 
           {/* Sculpted Overtaking Bars */}
-          <div className="relative space-y-2.5">
+          <div className="relative space-y-1.5">
             {visible.map((row) => {
               const active = row.id === selectedRow?.id
               const delta = getRankDelta(editions, edition.year, row)
@@ -477,7 +477,7 @@ export function RaceSection({
                   aria-pressed={active}
                   onClick={() => onSelectSchool(row, false)}
                   className={cn(
-                    "group relative grid w-full cursor-pointer grid-cols-[26px_36px_minmax(96px,148px)_1fr_52px] items-center gap-2.5 rounded-2xl px-2.5 py-1.5 text-left transition-colors sm:grid-cols-[30px_40px_minmax(126px,168px)_1fr_62px] sm:gap-3.5 sm:px-3",
+                    "group relative grid w-full cursor-pointer grid-cols-[26px_34px_minmax(96px,148px)_1fr_52px] items-center gap-2.5 rounded-2xl px-2.5 py-1 text-left transition-colors sm:grid-cols-[28px_36px_minmax(126px,168px)_1fr_62px] sm:gap-3.5 sm:px-3",
                     active
                       ? "bg-white/[0.075] ring-1 ring-white/25"
                       : "hover:bg-white/[0.035]"
@@ -499,7 +499,7 @@ export function RaceSection({
 
                   {/* 2. Distinct Circular University Avatar Badge */}
                   <span
-                    className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-bold tracking-tight text-white shadow-inner sm:h-10 sm:w-10"
+                    className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-mono text-[10.5px] font-bold tracking-tight text-white shadow-inner sm:h-9 sm:w-9"
                     style={{
                       background: swatch.badgeBg,
                       border: `1.5px solid ${swatch.badgeBorder}`,
@@ -519,7 +519,7 @@ export function RaceSection({
                   <div className="min-w-0">
                     <div
                       className={cn(
-                        "truncate text-[13px] font-semibold tracking-tight sm:text-[14.5px]",
+                        "truncate text-[13px] font-semibold tracking-tight sm:text-[14px]",
                         active ? "text-white" : "text-zinc-100 group-hover:text-white"
                       )}
                     >
@@ -534,7 +534,7 @@ export function RaceSection({
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="relative flex flex-1 items-center">
                       <motion.div
-                        className="relative h-8 overflow-hidden rounded-[10px] sm:h-10 sm:rounded-[11px]"
+                        className="relative h-7 overflow-hidden rounded-[9px] sm:h-8 sm:rounded-[10px]"
                         style={{
                           background: swatch.bg,
                           boxShadow: active
