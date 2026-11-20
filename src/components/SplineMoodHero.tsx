@@ -24,15 +24,16 @@ const VERT = /* glsl */ `
   }
 `
 
-// Faithful GLSL optical recreation of Spline "Retrofuturism - BG animation" (fba5a24b):
-// Matte obsidian charcoal canvas + diagonal -45° fluted glass slats + drifting sunset orb
-// with crimson -> vermilion -> tangerine -> amber-gold bevel refraction + fine analog film grain.
+// Retrofuturism diagonal fluted glass + interactive optical magnifier lens &
+// cursor-driven chromatic spectrum spotlight (inspired by both Spline Retrofuturism & interactive reveal reference).
 const FRAG = /* glsl */ `
   precision highp float;
   varying vec2 vUv;
   uniform float uTime;
   uniform vec2 uRes;
   uniform vec2 uMouse;
+  uniform float uHover;
+  uniform float uSpeed;
   uniform float uMode;
 
   float hash12(vec2 p) {
@@ -41,41 +42,33 @@ const FRAG = /* glsl */ `
     return fract((p3.x + p3.y) * p3.z);
   }
 
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(
-      mix(hash12(i + vec2(0.0, 0.0)), hash12(i + vec2(1.0, 0.0)), u.x),
-      mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x),
-      u.y
-    );
+  // Smooth cosine spectrum palette for cursor-driven chromatic hover shift
+  vec3 spectrum(float phase) {
+    // Sweeps fluidly: emerald-cyan -> electric blue -> neon violet-magenta -> coral-gold
+    vec3 a = vec3(0.55, 0.52, 0.62);
+    vec3 b = vec3(0.45, 0.44, 0.42);
+    vec3 c = vec3(1.0, 1.0, 1.0);
+    vec3 d = vec3(0.05, 0.34, 0.68);
+    return a + b * cos(6.28318 * (c * phase + d));
   }
 
-  // Evaluate the glowing sunset light field behind the fluted glass at point (u, v)
-  // in the rotated slat coordinate space.
-  vec3 evalLightField(vec2 uvRot, vec2 orbPos, float t, float modeMix) {
+  // Evaluate the glowing sunset light field behind the fluted glass
+  vec3 evalSunsetField(vec2 uvRot, vec2 orbPos, float t, float modeMix) {
     vec2 d = uvRot - orbPos;
-
-    // Slightly elongated soft emissive solar body + tight sculptural falloff
     float dist = length(d * vec2(1.18, 1.12));
     float intensity = exp(-dist * dist * 7.8) * 1.32 + exp(-dist * 4.2) * 0.16;
 
-    // Positional color temperature across the orb (lower-left crimson -> core amber-gold)
     float grad = clamp((d.x * 1.95 + 0.48) + 0.14 * sin(t * 0.3), 0.0, 1.0);
 
-    // Combined mode: faithful Retrofuturism sunset palette
-    vec3 crimsonA  = vec3(0.58, 0.03, 0.03);
-    vec3 scarletA  = vec3(0.86, 0.17, 0.08);
+    vec3 crimsonA   = vec3(0.58, 0.03, 0.03);
+    vec3 scarletA   = vec3(0.86, 0.17, 0.08);
     vec3 tangerineA = vec3(0.98, 0.43, 0.11);
-    vec3 amberA    = vec3(1.00, 0.74, 0.34);
+    vec3 amberA     = vec3(1.00, 0.74, 0.34);
 
-    // Support mode: subtle cool-sunset shift (deep ruby -> coral -> warm gold)
-    // Keeping the exact Spline aesthetic while subtly acknowledging mode switch
-    vec3 crimsonB  = vec3(0.06, 0.20, 0.44);
-    vec3 scarletB  = vec3(0.08, 0.48, 0.66);
+    vec3 crimsonB   = vec3(0.06, 0.20, 0.44);
+    vec3 scarletB   = vec3(0.08, 0.48, 0.66);
     vec3 tangerineB = vec3(0.18, 0.76, 0.74);
-    vec3 amberB    = vec3(0.68, 0.95, 0.88);
+    vec3 amberB     = vec3(0.68, 0.95, 0.88);
 
     vec3 c1 = mix(crimsonA, crimsonB, modeMix * 0.75);
     vec3 c2 = mix(scarletA, scarletB, modeMix * 0.75);
@@ -89,85 +82,159 @@ const FRAG = /* glsl */ `
     return hue * intensity;
   }
 
-  void main() {
-    float aspect = uRes.x / max(uRes.y, 1.0);
-    vec2 p = (vUv - 0.5) * vec2(aspect, 1.0);
+  // Evaluate interactive cursor-revealed chromatic energy field (wakes up hidden glass bars under pointer)
+  vec3 evalCursorField(vec2 uvRot, vec2 mouseRot, vec2 mouseUv, float t, float hover) {
+    if (hover <= 0.001) return vec3(0.0);
+    vec2 dm = uvRot - mouseRot;
+    float md = length(dm);
+    float spot = exp(-md * md * 11.5) * 1.35 + exp(-md * 4.8) * 0.25;
 
-    // Anchor the glass array toward upper-center-right just like the Spline composition
+    // Color phase shifts dramatically as the user moves cursor across X/Y
+    float phase = mouseUv.x * 0.95 + mouseUv.y * 0.42 + t * 0.08 + dm.x * 0.65;
+    vec3 colA = spectrum(phase);
+    vec3 colB = spectrum(phase + 0.18);
+    vec3 col = mix(colA, colB, smoothstep(-0.25, 0.25, dm.y));
+
+    // Boost saturation & crisp luminosity
+    return col * spot * hover * 1.15;
+  }
+
+  // Render the diagonal fluted glass array at any given screen coordinate p (enables optical lens magnification)
+  vec3 sampleGlassScene(vec2 p, float aspect, vec2 mouseP, vec2 mouseUv, float t, float hover, float modeMix, float chromaBoost, out float outLight) {
     float anchorX = aspect > 1.05 ? 0.16 * aspect : 0.04;
     vec2 q = p - vec2(anchorX, 0.04);
 
-    // Rotate by +45 deg so each glass bar runs top-left to bottom-right (\)
-    // and bars stack cleanly from bottom-left (low u) to top-right (high u).
     const float cs = 0.70710678;
     vec2 rot = vec2(q.x * cs + q.y * cs, -q.x * cs + q.y * cs);
 
-    // Bold fluted glass slat pitch (about 7–8 major visible bars across the lit area)
     float slatW = 0.118;
     float slatPos = rot.x / slatW;
     float slatIdx = floor(slatPos);
-    float f = fract(slatPos); // 0 = lower-left edge of bar, 1 = razor-sharp upper-right edge
+    float f = fract(slatPos);
 
-    // Smoothly orbiting sunset light source behind the glass + gentle mouse parallax
-    float t = uTime;
-    vec2 mouseOff = (uMouse - 0.5) * vec2(0.14, 0.10);
+    vec2 mouseOff = (mouseUv - 0.5) * vec2(0.12, 0.09) * hover;
     vec2 orbWorld = vec2(
       0.06 + sin(t * 0.42) * 0.13 + cos(t * 0.23) * 0.05,
       0.04 + cos(t * 0.34) * 0.11 + sin(t * 0.19) * 0.04
     ) + mouseOff;
     vec2 orbRot = vec2(orbWorld.x * cs + orbWorld.y * cs, -orbWorld.x * cs + orbWorld.y * cs);
 
-    // Cylindrical / prismatic optical refraction through each thick glass bar:
-    // Light bends asymmetrically toward the sharp upper-right bevel (f -> 1)
+    vec2 mQ = mouseP - vec2(anchorX, 0.04);
+    vec2 mouseRot = vec2(mQ.x * cs + mQ.y * cs, -mQ.x * cs + mQ.y * cs);
+
     float barCenterU = (slatIdx + 0.5) * slatW;
-    float lensCurve = (f - 0.5) * 2.0; // -1 .. +1
+    float lensCurve = (f - 0.5) * 2.0;
     float refractU = barCenterU + lensCurve * slatW * 0.24 - pow(max(0.0, f), 2.2) * slatW * 0.52;
     float refractV = rot.y * (1.0 - 0.08 * (1.0 - lensCurve * lensCurve)) + (f - 0.5) * 0.032;
 
-    // Chromatic micro-dispersion for realistic thick glass feel
-    vec3 colR = evalLightField(vec2(refractU + 0.008, refractV), orbRot, t, uMode);
-    vec3 colG = evalLightField(vec2(refractU,         refractV), orbRot, t, uMode);
-    vec3 colB = evalLightField(vec2(refractU - 0.008, refractV), orbRot, t, uMode);
-    vec3 refracted = vec3(colR.r, colG.g, colB.b);
+    // Dispersion expands slightly inside the magnifier lens / on fast hover sweeps
+    float disp = 0.008 + chromaBoost * 0.016;
 
-    // Sculpted shading across each individual glass bar:
-    // - Soft dark shadow falloff on the lower-left edge (f near 0)
-    // - Smooth luminous body across the middle
-    // - Crisp bright beveled specular ridge along the upper-right edge (f near 0.94..0.985)
-    // - Razor-sharp dark seam between adjacent bars (f > 0.985 or f < 0.025)
+    vec2 uvR = vec2(refractU + disp, refractV);
+    vec2 uvG = vec2(refractU,        refractV);
+    vec2 uvB = vec2(refractU - disp, refractV);
+
+    vec3 sunR = evalSunsetField(uvR, orbRot, t, modeMix);
+    vec3 sunG = evalSunsetField(uvG, orbRot, t, modeMix);
+    vec3 sunB = evalSunsetField(uvB, orbRot, t, modeMix);
+    vec3 sunRefracted = vec3(sunR.r, sunG.g, sunB.b);
+
+    vec3 curR = evalCursorField(uvR, mouseRot, mouseUv, t, hover);
+    vec3 curG = evalCursorField(uvG, mouseRot, mouseUv, t, hover);
+    vec3 curB = evalCursorField(uvB, mouseRot, mouseUv, t, hover);
+    vec3 curRefracted = vec3(curR.r, curG.g, curB.b);
+
+    // Inside the cursor spotlight, shift & replace the local warm hue with the interactive spectrum
+    float curProx = exp(-length(rot - mouseRot) * 4.4) * hover;
+    vec3 refracted = mix(sunRefracted, sunRefracted * 0.35 + curRefracted * 1.15, clamp(curProx * 1.15, 0.0, 0.92));
+
     float softLeft = smoothstep(0.015, 0.24, f);
     float sharpRight = 1.0 - smoothstep(0.972, 0.996, f);
     float barMask = softLeft * sharpRight;
 
     float bodyShade = mix(0.46, 1.08, pow(f, 0.72));
-    float bevelRim = exp(-pow((f - 0.945) / 0.042, 2.0)) * 0.85;
-    float microHighlight = exp(-pow((f - 0.968) / 0.014, 2.0)) * 0.55;
+    float bevelRim = exp(-pow((f - 0.945) / 0.042, 2.0)) * (0.85 + curProx * 0.55);
+    float microHighlight = exp(-pow((f - 0.968) / 0.014, 2.0)) * (0.55 + curProx * 0.65);
 
-    // Taper the bars cleanly along their length (v) so tips dissolve like glass sculptures into black
-    float alongFade = exp(-pow((rot.y - orbRot.y * 0.72) / 0.38, 2.0));
+    // Sunset bars taper organically; cursor spotlight wakes up even dark outer bars!
+    float sunAlong = exp(-pow((rot.y - orbRot.y * 0.72) / 0.38, 2.0));
+    float curAlong = exp(-pow((rot.y - mouseRot.y) / 0.34, 2.0)) * hover;
+    float alongFade = max(sunAlong, curAlong);
+
     float totalLight = length(refracted);
+    outLight = totalLight;
 
-    // Combine glass body refraction + hot bevel highlight
     vec3 glassColor = refracted * bodyShade * barMask * (0.2 + 0.8 * alongFade);
-    vec3 rimTint = mix(refracted * 1.45, vec3(1.0, 0.90, 0.72), 0.48);
-    glassColor += rimTint * (bevelRim + microHighlight) * sharpRight * smoothstep(0.05, 0.36, totalLight) * alongFade;
+    vec3 rimTint = mix(refracted * 1.5, vec3(1.0, 0.96, 0.92), 0.45);
+    glassColor += rimTint * (bevelRim + microHighlight) * sharpRight * smoothstep(0.04, 0.34, totalLight) * alongFade;
 
-    // Subtle ambient bleed behind the dark gaps so transitions remain organic
-    vec3 deepAmbient = evalLightField(rot, orbRot, t, uMode) * 0.032 * alongFade;
+    vec3 deepAmbient = (evalSunsetField(rot, orbRot, t, modeMix) + evalCursorField(rot, mouseRot, mouseUv, t, hover) * 0.65) * 0.035 * alongFade;
 
-    // Base deep matte charcoal-obsidian canvas (#0B0B0C)
+    return glassColor + deepAmbient;
+  }
+
+  void main() {
+    float aspect = uRes.x / max(uRes.y, 1.0);
+    vec2 p = (vUv - 0.5) * vec2(aspect, 1.0);
+    vec2 mouseP = (uMouse - 0.5) * vec2(aspect, 1.0);
+
+    // ── Optical Magnifier Lens (Spherical Convex Glass Loupe around cursor) ──
+    vec2 dLens = p - mouseP;
+    float distLens = length(dLens);
+    float lensRadius = 0.25;
+    float normR = clamp(distLens / lensRadius, 0.0, 1.0);
+
+    // Smooth bell-shaped magnification factor: pulls coordinates inward to magnify by ~1.36x
+    float inside = smoothstep(1.0, 0.0, normR) * uHover;
+    float pinch = 1.0 - inside * (0.30 + uSpeed * 0.08) * (1.0 - normR * normR * 0.45);
+    vec2 lensP = mouseP + dLens * pinch;
+
+    // Chromatic RGB radial split along the magnifier rim for real optical glass feel
+    float rimZone = exp(-pow((normR - 0.88) / 0.14, 2.0)) * uHover;
+    vec2 radialDir = distLens > 0.0001 ? dLens / distLens : vec2(0.0);
+    float lensSplit = (0.0045 + uSpeed * 0.004) * rimZone;
+
+    float lightVal = 0.0;
+    float tmpL = 0.0;
+    vec3 glassCol;
+    if (rimZone > 0.01) {
+      vec3 cR = sampleGlassScene(lensP + radialDir * lensSplit, aspect, mouseP, uMouse, uTime, uHover, uMode, inside + rimZone, lightVal);
+      vec3 cG = sampleGlassScene(lensP,                         aspect, mouseP, uMouse, uTime, uHover, uMode, inside,           tmpL);
+      vec3 cB = sampleGlassScene(lensP - radialDir * lensSplit, aspect, mouseP, uMouse, uTime, uHover, uMode, inside + rimZone, tmpL);
+      glassCol = vec3(cR.r, cG.g, cB.b);
+      lightVal = max(lightVal, tmpL);
+    } else {
+      glassCol = sampleGlassScene(lensP, aspect, mouseP, uMouse, uTime, uHover, uMode, inside, lightVal);
+    }
+
+    // Subtle crisp glass loupe rim ring & specular sheen at the magnifier edge
+    float ringSharp = exp(-pow((normR - 0.985) / 0.022, 2.0)) * uHover;
+    float ringSoft  = exp(-pow((normR - 0.96) / 0.09, 2.0)) * uHover;
+    vec3 lensHue = spectrum(uMouse.x * 0.95 + uMouse.y * 0.42 + uTime * 0.08);
+    // Directional specular glint on top-left of lens rim
+    float rimGlint = pow(max(0.0, dot(radialDir, normalize(vec2(-0.65, 0.75)))), 3.0);
+    vec3 lensOverlay =
+      mix(lensHue, vec3(1.0), 0.55) * ringSharp * (0.28 + 0.55 * rimGlint) +
+      lensHue * ringSoft * 0.09;
+
+    // Subtle faint micro-grid revealed exclusively inside the magnifier loupe
+    vec2 gridUv = fract(lensP * 14.0);
+    float dotGrid = smoothstep(0.12, 0.03, length(gridUv - 0.5));
+    vec3 loupeGrid = mix(lensHue, vec3(1.0), 0.35) * dotGrid * inside * 0.14;
+
+    // Base matte charcoal-obsidian canvas (#0B0B0C)
     vec3 baseBg = vec3(0.043, 0.043, 0.046);
-    vec3 color = baseBg + deepAmbient + glassColor;
+    vec3 color = baseBg + glassCol + lensOverlay + loupeGrid;
 
-    // Tone mapping (ACES-like soft roll-off so highlights glow warmly without harsh clipping)
-    color = color / (1.0 + color * 0.42);
+    // Soft filmic tone mapping
+    color = color / (1.0 + color * 0.40);
     color = pow(max(color, 0.0), vec3(0.96));
 
-    // Pervasive fine analog film grain (Signature #retro #grain texture from Spline scene)
-    float g1 = hash12(gl_FragCoord.xy + fract(t * 0.07) * 100.0);
+    // Pervasive fine analog film grain
+    float g1 = hash12(gl_FragCoord.xy + fract(uTime * 0.07) * 100.0);
     float g2 = hash12(gl_FragCoord.xy * 0.5 + 17.3);
-    float grain = ((g1 * 0.72 + g2 * 0.28) - 0.5) * 0.078;
-    color += grain * (0.75 + 0.55 * clamp(totalLight, 0.0, 1.0));
+    float grain = ((g1 * 0.72 + g2 * 0.28) - 0.5) * 0.076;
+    color += grain * (0.75 + 0.50 * clamp(lightVal + inside * 0.4, 0.0, 1.0));
 
     // Subtle edge vignette
     float vig = 1.0 - dot((vUv - 0.5) * 1.05, (vUv - 0.5) * 1.05) * 0.35;
@@ -186,6 +253,7 @@ export function SplineMoodHero({
   status,
   savedCount,
 }: SplineMoodHeroProps) {
+  const sectionRef = React.useRef<HTMLElement>(null)
   const mountRef = React.useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
   const modeTargetRef = React.useRef(mode === "combined" ? 0 : 1)
@@ -196,7 +264,8 @@ export function SplineMoodHero({
 
   React.useEffect(() => {
     const container = mountRef.current
-    if (!container) return
+    const section = sectionRef.current
+    if (!container || !section) return
 
     let renderer: THREE.WebGLRenderer | null = null
     try {
@@ -209,7 +278,9 @@ export function SplineMoodHero({
       return
     }
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    const getDpr = () => Math.min(window.devicePixelRatio || 1, 2)
+    const dpr = getDpr()
+    renderer.setPixelRatio(dpr)
     renderer.setSize(container.clientWidth, container.clientHeight)
     renderer.domElement.className = "block h-full w-full"
     container.appendChild(renderer.domElement)
@@ -221,11 +292,13 @@ export function SplineMoodHero({
       uTime: { value: 0 },
       uRes: {
         value: new THREE.Vector2(
-          container.clientWidth * Math.min(window.devicePixelRatio || 1, 2),
-          container.clientHeight * Math.min(window.devicePixelRatio || 1, 2)
+          container.clientWidth * dpr,
+          container.clientHeight * dpr
         ),
       },
-      uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+      uMouse: { value: new THREE.Vector2(0.62, 0.52) },
+      uHover: { value: 0 },
+      uSpeed: { value: 0 },
       uMode: { value: modeTargetRef.current },
     }
 
@@ -238,22 +311,43 @@ export function SplineMoodHero({
     })
     scene.add(new THREE.Mesh(geometry, material))
 
-    const targetMouse = { x: 0.5, y: 0.5 }
+    const targetMouse = { x: 0.62, y: 0.52 }
+    let hoverTarget = 0
+    let speedTarget = 0
+
     const onPointerMove = (e: PointerEvent) => {
-      const rect = container.getBoundingClientRect()
-      targetMouse.x = (e.clientX - rect.left) / Math.max(rect.width, 1)
-      targetMouse.y = 1 - (e.clientY - rect.top) / Math.max(rect.height, 1)
+      if (e.pointerType === "touch") return
+      const rect = section.getBoundingClientRect()
+      const nx = (e.clientX - rect.left) / Math.max(rect.width, 1)
+      const ny = 1 - (e.clientY - rect.top) / Math.max(rect.height, 1)
+      const inside = nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1
+      if (inside) {
+        const dx = nx - targetMouse.x
+        const dy = ny - targetMouse.y
+        speedTarget = Math.min(1.5, Math.hypot(dx, dy) * 28)
+        targetMouse.x = nx
+        targetMouse.y = ny
+        hoverTarget = 1
+      } else {
+        hoverTarget = 0
+      }
     }
+
+    const onPointerLeave = () => {
+      hoverTarget = 0
+    }
+
     window.addEventListener("pointermove", onPointerMove, { passive: true })
+    section.addEventListener("pointerleave", onPointerLeave)
 
     const onResize = () => {
       if (!renderer) return
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const nextDpr = getDpr()
       const w = container.clientWidth
       const h = Math.max(container.clientHeight, 1)
-      renderer.setPixelRatio(dpr)
+      renderer.setPixelRatio(nextDpr)
       renderer.setSize(w, h)
-      uniforms.uRes.value.set(w * dpr, h * dpr)
+      uniforms.uRes.value.set(w * nextDpr, h * nextDpr)
     }
     const ro = new ResizeObserver(onResize)
     ro.observe(container)
@@ -264,8 +358,11 @@ export function SplineMoodHero({
       raf = requestAnimationFrame(tick)
       if (document.hidden || !renderer) return
       uniforms.uTime.value = reduced ? 1.2 : (now - start) * 0.001
-      uniforms.uMouse.value.x += (targetMouse.x - uniforms.uMouse.value.x) * 0.045
-      uniforms.uMouse.value.y += (targetMouse.y - uniforms.uMouse.value.y) * 0.045
+      uniforms.uMouse.value.x += (targetMouse.x - uniforms.uMouse.value.x) * 0.11
+      uniforms.uMouse.value.y += (targetMouse.y - uniforms.uMouse.value.y) * 0.11
+      uniforms.uHover.value += (hoverTarget - uniforms.uHover.value) * 0.075
+      uniforms.uSpeed.value += (speedTarget - uniforms.uSpeed.value) * 0.1
+      speedTarget *= 0.88
       uniforms.uMode.value += (modeTargetRef.current - uniforms.uMode.value) * 0.055
       renderer.render(scene, camera)
     }
@@ -275,6 +372,7 @@ export function SplineMoodHero({
       cancelAnimationFrame(raf)
       ro.disconnect()
       window.removeEventListener("pointermove", onPointerMove)
+      section.removeEventListener("pointerleave", onPointerLeave)
       geometry.dispose()
       material.dispose()
       renderer?.dispose()
@@ -286,10 +384,11 @@ export function SplineMoodHero({
 
   return (
     <section
+      ref={sectionRef}
       id="top"
       className="relative flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#0b0b0c]"
     >
-      {/* Full-bleed Diagonal Fluted Glass & Sunset Refraction Shader Canvas */}
+      {/* Full-bleed Diagonal Fluted Glass + Interactive Magnifier Loupe & Chromatic Spotlight */}
       <div
         ref={mountRef}
         aria-hidden="true"
@@ -337,7 +436,7 @@ export function SplineMoodHero({
         </div>
       </header>
 
-      {/* Lower-Left Editorial Typography (faithful to Spline Retrofuturism layout) */}
+      {/* Lower-Left Editorial Typography */}
       <div className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-1 flex-col justify-end px-6 pb-14 md:px-12 md:pb-16">
         <div className="max-w-xl">
           <motion.h1
@@ -432,7 +531,7 @@ export function SplineMoodHero({
             <span>·</span>
             <span>확인 {formatKst(status?.checked)}</span>
             <span>·</span>
-            <span>대학알리미 × OpenAlex</span>
+            <span>커서를 움직여 유리 굴절·스펙트럼 탐색</span>
           </motion.div>
         </div>
       </div>
