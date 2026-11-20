@@ -4,7 +4,6 @@ import { MethodologySection } from "@/components/MethodologySection"
 import { RaceSection } from "@/components/RaceSection"
 import { RankingTableSection } from "@/components/RankingTableSection"
 import { SplineMoodHero } from "@/components/SplineMoodHero"
-import { TopShowcaseSection } from "@/components/TopShowcaseSection"
 import {
   type CompareMode,
   type DisclosurePayload,
@@ -211,7 +210,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#06070a] text-zinc-100">
-      {/* 1. Spline-inspired 3D Liquid Glass & Solar Core Hero */}
+      {/* 1. Spline Retrofuturism Diagonal Fluted Glass Hero */}
       <SplineMoodHero
         mode={mode}
         onModeChange={handleModeChange}
@@ -220,13 +219,6 @@ export default function App() {
         yearRange={yearRange}
         status={status}
         savedCount={savedRows.length}
-      />
-
-      {/* 2. Full-bleed Editorial Filmstrip HeroCarousel (TOP 07 Showcase) */}
-      <TopShowcaseSection
-        edition={currentEdition}
-        mode={mode}
-        onInspectSchool={handleInspectAndScroll}
       />
 
       {/* Loading / Error State Fallback */}
