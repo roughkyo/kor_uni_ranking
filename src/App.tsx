@@ -14,7 +14,6 @@ import {
 } from "@/types/ranking"
 
 const SAVED_STORAGE_KEY = "kor_uni_ranking_saved_v1"
-const GROUP_SIZE = 20
 
 export default function App() {
   const [rawBook, setRawBook] = React.useState<DisclosurePayload | null>(null)
@@ -24,6 +23,8 @@ export default function App() {
   const [mode, setMode] = React.useState<CompareMode>("combined")
   const [year, setYear] = React.useState<number | null>(null)
   const [page, setPage] = React.useState(0)
+  const [racePageSize, setRacePageSize] = React.useState(10)
+  const [tablePage, setTablePage] = React.useState(0)
   const [selectedId, setSelectedId] = React.useState<string>("")
   const [searchTerm, setSearchTerm] = React.useState("")
   const [playing, setPlaying] = React.useState(false)
@@ -125,7 +126,7 @@ export default function App() {
         }
         return editions[nextIdx].year
       })
-    }, 2300)
+    }, 1650)
     return () => window.clearInterval(id)
   }, [playing, editions])
 
@@ -135,14 +136,23 @@ export default function App() {
       setPlaying(false)
       return
     }
+    if (year === editions.at(-1)?.year) {
+      setYear(editions[0].year)
+    }
+    setPlaying(true)
+  }, [editions, playing, year])
+
+  const handleReplay = React.useCallback(() => {
+    if (editions.length < 2) return
     setYear(editions[0].year)
     setPlaying(true)
-  }, [editions, playing])
+  }, [editions])
 
   const handleModeChange = React.useCallback((nextMode: CompareMode) => {
     setPlaying(false)
     setMode(nextMode)
     setPage(0)
+    setTablePage(0)
   }, [])
 
   const handleSelectSchool = React.useCallback(
@@ -151,10 +161,13 @@ export default function App() {
       setSelectedId(row.id)
       if (jumpPage && currentEdition) {
         const idx = currentEdition.rows.findIndex((r) => r.id === row.id)
-        if (idx >= 0) setPage(Math.floor(idx / GROUP_SIZE))
+        if (idx >= 0) {
+          setPage(Math.floor(idx / racePageSize))
+          setTablePage(Math.floor(idx / 20))
+        }
       }
     },
-    [currentEdition]
+    [currentEdition, racePageSize]
   )
 
   const handleInspectAndScroll = React.useCallback(
@@ -204,10 +217,6 @@ export default function App() {
       ? `${editions[0].year}–${editions.at(-1)!.year}`
       : `${latestEdition?.year ?? 2026}`
 
-  const isLatest =
-    Boolean(currentEdition && latestEdition && currentEdition.year === latestEdition.year) &&
-    !playing
-
   return (
     <div className="min-h-screen bg-[#06070a] text-zinc-100">
       {/* 1. Spline Retrofuturism Diagonal Fluted Glass Hero */}
@@ -231,7 +240,7 @@ export default function App() {
         </div>
       ) : (
         <>
-          {/* 3. Live Telemetry Race Chart + University Detail Inspector */}
+          {/* 3. Sculpted Bar Race Chart + University Detail Inspector */}
           <RaceSection
             editions={editions}
             edition={currentEdition}
@@ -240,17 +249,18 @@ export default function App() {
             selectedId={selectedId}
             onSelectSchool={handleSelectSchool}
             page={page}
+            pageSize={racePageSize}
+            onPageSizeChange={(sz) => {
+              setRacePageSize(sz)
+              setPage(0)
+            }}
             onPageChange={setPage}
             playing={playing}
             onTogglePlay={handleTogglePlay}
+            onReplay={handleReplay}
             onSelectYear={(y) => {
               setPlaying(false)
               setYear(y)
-            }}
-            isLatest={isLatest}
-            onJumpLatest={() => {
-              setPlaying(false)
-              if (latestEdition) setYear(latestEdition.year)
             }}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
@@ -266,8 +276,8 @@ export default function App() {
             editions={editions}
             edition={currentEdition}
             mode={mode}
-            page={page}
-            onPageChange={setPage}
+            page={tablePage}
+            onPageChange={setTablePage}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             selectedId={selectedId}
