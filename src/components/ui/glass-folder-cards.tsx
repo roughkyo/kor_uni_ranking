@@ -445,7 +445,7 @@ function ArtCanvas({
 
 const W = 340
 const H = 272
-const HEADROOM = 54
+const HEADROOM = 116
 const FRONT_TOP = 74
 const FRONT_H = H - FRONT_TOP
 const SHEET_W = 272
@@ -861,25 +861,45 @@ const GF_CSS = `
   --gf-py: 0;
   --gf-ease: cubic-bezier(.2, .8, .2, 1);
   --gf-spring: cubic-bezier(.34, 1.36, .5, 1);
-  --gf-hinge: 0deg;
-  --gf-lift: 42px;
-  --gf-spread: 0px;
-  --gf-fan: 0deg;
-  --gf-stack: 15px;
+  --gf-hinge: -10deg;
+  --gf-lift: -56px;
+  --gf-spread: 16px;
+  --gf-fan: 2.4deg;
+  --gf-stack: 32px;
   --gf-ink: #141416;
   --gf-ink-soft: rgba(20, 20, 22, .55);
   position: relative;
   display: inline-block;
   flex: none;
   vertical-align: top;
+  z-index: 1;
   font-family: "Noto Sans KR", ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   isolation: isolate;
+  transition: transform .55s var(--gf-spring), z-index 0s .25s;
 }
 .gf-root[data-tone="dark"] { --gf-ink: #f5f5f7; --gf-ink-soft: rgba(245, 245, 247, .58); }
-.gf-root:hover, .gf-root:focus-within { --gf-hinge: -11deg; --gf-lift: -34px; --gf-spread: 8px; --gf-fan: 1.4deg; --gf-stack: 10px; }
-.gf-root[data-open] { --gf-hinge: -24deg; --gf-lift: -96px; --gf-spread: 40px; --gf-fan: 5deg; --gf-stack: 30px; }
+.gf-root:hover, .gf-root:focus-within {
+  z-index: 15;
+  transform: scale(1.03);
+  transition: transform .45s var(--gf-spring), z-index 0s;
+  --gf-hinge: -16deg;
+  --gf-lift: -76px;
+  --gf-spread: 24px;
+  --gf-fan: 3.4deg;
+  --gf-stack: 31px;
+}
+.gf-root[data-open] {
+  z-index: 40;
+  transform: scale(1.16) translateY(-10px);
+  transition: transform .55s var(--gf-spring), z-index 0s;
+  --gf-hinge: -29deg;
+  --gf-lift: -116px;
+  --gf-spread: 54px;
+  --gf-fan: 6.8deg;
+  --gf-stack: 38px;
+}
 
 .gf-stage {
   position: absolute;
@@ -990,9 +1010,10 @@ canvas.gf-art[data-ready] { opacity: 1; filter: none; }
 .gf-root[data-open] .gf-sheet:hover,
 .gf-root[data-open] .gf-sheet:focus-visible {
   transform:
-    translate(calc(var(--gf-jx) + var(--gf-slot) * var(--gf-spread)), calc(var(--gf-lift) + var(--gf-depth) * var(--gf-stack) * -1 - 18px))
-    rotate(calc(var(--gf-slot) * var(--gf-fan) * .6));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 0 .5px rgba(0, 0, 0, .1), 0 22px 40px -12px rgba(10, 12, 20, .42);
+    translate(calc(var(--gf-jx) + var(--gf-slot) * var(--gf-spread)), calc(var(--gf-lift) + var(--gf-depth) * var(--gf-stack) * -1 - 24px))
+    rotate(calc(var(--gf-slot) * var(--gf-fan) * .5))
+    scale(1.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 0 .5px rgba(255, 255, 255, .28), 0 26px 48px -12px rgba(0, 0, 0, .72);
   transition-delay: 0s;
 }
 .gf-sheet:focus-visible { outline: 2px solid #4c8dff; outline-offset: 2px; }

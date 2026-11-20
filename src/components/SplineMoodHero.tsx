@@ -13,7 +13,6 @@ interface SplineMoodHeroProps {
   schoolCount: number
   yearRange: string
   status: DisclosureStatus | null
-  savedCount: number
 }
 
 const VERT = /* glsl */ `
@@ -251,7 +250,6 @@ export function SplineMoodHero({
   schoolCount,
   yearRange,
   status,
-  savedCount,
 }: SplineMoodHeroProps) {
   const sectionRef = React.useRef<HTMLElement>(null)
   const mountRef = React.useRef<HTMLDivElement>(null)
@@ -417,11 +415,6 @@ export function SplineMoodHero({
           </a>
           <a href="#archive" className="transition-colors hover:text-white">
             자료 아카이브
-            {savedCount > 0 ? (
-              <span className="ml-1.5 font-mono text-[10px] text-orange-400">
-                ({savedCount})
-              </span>
-            ) : null}
           </a>
         </nav>
 

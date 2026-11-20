@@ -1,8 +1,6 @@
 import * as React from "react"
 import { animate, motion, useMotionValue } from "framer-motion"
 import {
-  Bookmark,
-  BookmarkCheck,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -43,8 +41,6 @@ interface RaceSectionProps {
   onSelectYear: (year: number) => void
   searchTerm: string
   onSearchChange: (term: string) => void
-  savedIds: Set<string>
-  onToggleSave: (row: UniversityRow) => void
 }
 
 const GLOCAL_LINKS: Record<number, string> = {
@@ -206,8 +202,6 @@ export function RaceSection({
   onSelectYear,
   searchTerm,
   onSearchChange,
-  savedIds,
-  onToggleSave,
 }: RaceSectionProps) {
   const pages = Math.max(1, Math.ceil(edition.rows.length / pageSize))
   const safePage = Math.min(page, pages - 1)
@@ -261,7 +255,6 @@ export function RaceSection({
     })
   }, [editions, selectedRow])
 
-  const isSaved = selectedRow ? savedIds.has(selectedRow.id) : false
   const selectedDelta = selectedRow
     ? getRankDelta(editions, edition.year, selectedRow)
     : { label: "—", diff: null, kind: "none" as const }
@@ -796,30 +789,6 @@ export function RaceSection({
                 </div>
               </div>
             </div>
-
-            {/* Save to GlassFolder button */}
-            <button
-              type="button"
-              onClick={() => onToggleSave(selectedRow)}
-              className={cn(
-                "mt-5 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all",
-                isSaved
-                  ? "border-orange-400/50 bg-orange-500/15 text-orange-200"
-                  : "border-white/12 bg-white/[0.04] text-zinc-200 hover:border-white/25 hover:bg-white/[0.08]"
-              )}
-            >
-              {isSaved ? (
-                <>
-                  <BookmarkCheck className="h-4 w-4 text-orange-300" />
-                  관심 대학 폴더에 보관됨 (클릭 시 해제)
-                </>
-              ) : (
-                <>
-                  <Bookmark className="h-4 w-4 text-zinc-400" />
-                  하단 관심 대학 글래스 폴더에 담기
-                </>
-              )}
-            </button>
 
             {/* Metric Breakdown */}
             <div className="mt-5 space-y-3 border-t border-white/10 pt-5">

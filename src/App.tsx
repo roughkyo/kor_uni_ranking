@@ -13,8 +13,6 @@ import {
   formatKst,
 } from "@/types/ranking"
 
-const SAVED_STORAGE_KEY = "kor_uni_ranking_saved_v1"
-
 export default function App() {
   const [rawBook, setRawBook] = React.useState<DisclosurePayload | null>(null)
   const [status, setStatus] = React.useState<DisclosureStatus | null>(null)
@@ -28,25 +26,6 @@ export default function App() {
   const [selectedId, setSelectedId] = React.useState<string>("")
   const [searchTerm, setSearchTerm] = React.useState("")
   const [playing, setPlaying] = React.useState(false)
-
-  const [savedIds, setSavedIds] = React.useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(SAVED_STORAGE_KEY)
-      if (!stored) return []
-      const parsed = JSON.parse(stored)
-      return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : []
-    } catch {
-      return []
-    }
-  })
-
-  React.useEffect(() => {
-    try {
-      localStorage.setItem(SAVED_STORAGE_KEY, JSON.stringify(savedIds))
-    } catch {
-      // Ignore storage quota errors
-    }
-  }, [savedIds])
 
   const versionRef = React.useRef<string | undefined>(undefined)
   const checkingRef = React.useRef(false)
@@ -102,7 +81,6 @@ export default function App() {
   const currentEdition =
     editions.find((e) => e.year === year) ?? latestEdition
 
-  // Keep selectedId valid when switching mode / year / page
   React.useEffect(() => {
     if (!currentEdition || currentEdition.rows.length === 0) return
     if (!currentEdition.rows.some((r) => r.id === selectedId)) {
@@ -110,7 +88,6 @@ export default function App() {
     }
   }, [currentEdition, selectedId])
 
-  // Auto-play yearly race timer
   React.useEffect(() => {
     if (!playing || editions.length < 2) return
     const id = window.setInterval(() => {
@@ -178,40 +155,6 @@ export default function App() {
     [handleSelectSchool]
   )
 
-  const savedSet = React.useMemo(() => new Set(savedIds), [savedIds])
-
-  const handleToggleSave = React.useCallback((row: UniversityRow) => {
-    setSavedIds((prev) =>
-      prev.includes(row.id)
-        ? prev.filter((id) => id !== row.id)
-        : [...prev, row.id]
-    )
-  }, [])
-
-  const selectedRow = React.useMemo(() => {
-    if (!currentEdition) return null
-    return (
-      currentEdition.rows.find((r) => r.id === selectedId) ??
-      currentEdition.rows[0] ??
-      null
-    )
-  }, [currentEdition, selectedId])
-
-  const savedRows = React.useMemo(() => {
-    if (!currentEdition) return []
-    const byId = new Map(currentEdition.rows.map((r) => [r.id, r]))
-    return savedIds
-      .map((id) => byId.get(id))
-      .filter((r): r is UniversityRow => Boolean(r))
-  }, [currentEdition, savedIds])
-
-  const handleAddCurrentToFolder = React.useCallback((): UniversityRow | null => {
-    if (!selectedRow) return null
-    if (savedIds.includes(selectedRow.id)) return null
-    setSavedIds((prev) => [...prev, selectedRow.id])
-    return selectedRow
-  }, [selectedRow, savedIds])
-
   const yearRange =
     editions.length >= 2
       ? `${editions[0].year}–${editions.at(-1)!.year}`
@@ -227,7 +170,6 @@ export default function App() {
         schoolCount={currentEdition?.rows.length ?? 144}
         yearRange={yearRange}
         status={status}
-        savedCount={savedRows.length}
       />
 
       {/* Loading / Error State Fallback */}
@@ -240,7 +182,7 @@ export default function App() {
         </div>
       ) : (
         <>
-          {/* 3. Sculpted Bar Race Chart + University Detail Inspector */}
+          {/* 2. Sculpted Bar Race Chart + University Detail Inspector */}
           <RaceSection
             editions={editions}
             edition={currentEdition}
@@ -264,14 +206,12 @@ export default function App() {
             }}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            savedIds={savedSet}
-            onToggleSave={handleToggleSave}
           />
 
-          {/* 4. Methodology & Excluded Schools Accordion */}
+          {/* 3. Methodology & Excluded Schools Accordion */}
           <MethodologySection edition={currentEdition} mode={mode} />
 
-          {/* 5. Full Ranking Index Table */}
+          {/* 4. Full Ranking Index Table */}
           <RankingTableSection
             editions={editions}
             edition={currentEdition}
@@ -282,20 +222,12 @@ export default function App() {
             onSearchChange={setSearchTerm}
             selectedId={selectedId}
             onSelectSchool={handleInspectAndScroll}
-            savedIds={savedSet}
-            onToggleSave={handleToggleSave}
           />
         </>
       )}
 
-      {/* 6. Interactive Frosted Glass Folders (Bookmarks + Raw Sources + Portals) */}
-      <ArchiveFoldersSection
-        savedRows={savedRows}
-        selectedRow={selectedRow}
-        onAddCurrentSchool={handleAddCurrentToFolder}
-        onJumpToSchool={handleInspectAndScroll}
-        onClearSaved={() => setSavedIds([])}
-      />
+      {/* 5. Interactive Frosted Glass Archive Folders */}
+      <ArchiveFoldersSection />
 
       {/* Footer */}
       <footer className="border-t border-white/10 bg-[#040507]">

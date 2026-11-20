@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, Search } from "lucide-react"
+import { ChevronLeft, ChevronRight, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   type CompareMode,
@@ -21,8 +21,6 @@ interface RankingTableSectionProps {
   onSearchChange: (term: string) => void
   selectedId: string
   onSelectSchool: (row: UniversityRow) => void
-  savedIds: Set<string>
-  onToggleSave: (row: UniversityRow) => void
 }
 
 const GROUP_SIZE = 20
@@ -41,8 +39,6 @@ export function RankingTableSection({
   onSearchChange,
   selectedId,
   onSelectSchool,
-  savedIds,
-  onToggleSave,
 }: RankingTableSectionProps) {
   const pages = Math.max(1, Math.ceil(edition.rows.length / GROUP_SIZE))
   const safePage = Math.min(page, pages - 1)
@@ -104,7 +100,6 @@ export function RankingTableSection({
                 <th className="hidden px-4 py-3.5 sm:table-cell">지역</th>
                 <th className="px-4 py-3.5 text-right">점수</th>
                 <th className="px-4 py-3.5 text-right">전년 대비</th>
-                <th className="px-4 py-3.5 text-center">보관</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
@@ -113,7 +108,7 @@ export function RankingTableSection({
                   return (
                     <tr key={item.id} className="bg-white/[0.01] text-zinc-500">
                       <td className="px-4 py-3 font-mono text-xs">미산정</td>
-                      <td className="px-4 py-3" colSpan={5}>
+                      <td className="px-4 py-3" colSpan={4}>
                         <span className="font-medium text-zinc-400">{item.name}</span>
                         <span className="ml-2 text-xs text-zinc-600">
                           · 제외 사유: {formatExclusionReason(item)}
@@ -125,7 +120,6 @@ export function RankingTableSection({
 
                 const delta = getRankDelta(editions, edition.year, item)
                 const active = item.id === selectedId
-                const saved = savedIds.has(item.id)
 
                 return (
                   <tr
@@ -171,25 +165,6 @@ export function RankingTableSection({
                       )}
                     >
                       {delta.label}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => onToggleSave(item)}
-                        aria-label={`${item.name} 관심 대학 ${saved ? "해제" : "보관"}`}
-                        className={cn(
-                          "inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border transition-colors",
-                          saved
-                            ? "border-orange-400/40 bg-orange-500/15 text-orange-300"
-                            : "border-white/10 bg-white/[0.03] text-zinc-500 hover:border-white/25 hover:text-zinc-200"
-                        )}
-                      >
-                        {saved ? (
-                          <BookmarkCheck className="h-3.5 w-3.5" />
-                        ) : (
-                          <Bookmark className="h-3.5 w-3.5" />
-                        )}
-                      </button>
                     </td>
                   </tr>
                 )
