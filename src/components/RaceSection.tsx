@@ -36,6 +36,8 @@ interface RaceSectionProps {
   onPageSizeChange: (size: number) => void
   onPageChange: (page: number) => void
   playing: boolean
+  playRound: number
+  totalPlayRounds: number
   onTogglePlay: () => void
   onReplay: () => void
   onSelectYear: (year: number) => void
@@ -175,7 +177,7 @@ function AnimatedScore({ value }: { value: number }) {
 
   React.useEffect(() => {
     const controls = animate(mv, value, {
-      duration: 0.72,
+      duration: 0.48,
       ease: [0.22, 1, 0.36, 1],
       onUpdate: (latest) => setDisplay(latest),
     })
@@ -197,6 +199,8 @@ export function RaceSection({
   onPageSizeChange,
   onPageChange,
   playing,
+  playRound,
+  totalPlayRounds,
   onTogglePlay,
   onReplay,
   onSelectYear,
@@ -464,7 +468,7 @@ export function RaceSection({
                   key={row.id}
                   layout
                   transition={{
-                    layout: { type: "spring", stiffness: 210, damping: 26, mass: 0.9 },
+                    layout: { type: "spring", stiffness: 320, damping: 28, mass: 0.75 },
                   }}
                   type="button"
                   aria-pressed={active}
@@ -536,7 +540,7 @@ export function RaceSection({
                         }}
                         initial={false}
                         animate={{ width: `${barPct}%` }}
-                        transition={{ duration: 0.78, ease: [0.22, 1, 0.36, 1] }}
+                        transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
                       >
                         {/* Glossy top sheen for physical volume */}
                         <div
@@ -629,7 +633,7 @@ export function RaceSection({
                         ? `${(yearIndex / (editions.length - 1)) * 100}%`
                         : "100%",
                   }}
-                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
                 />
                 {/* Interactive Range Input */}
                 <input
@@ -655,7 +659,7 @@ export function RaceSection({
                         ? `${(yearIndex / (editions.length - 1)) * 100}%`
                         : "100%",
                   }}
-                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
                 />
               </div>
 
@@ -681,7 +685,13 @@ export function RaceSection({
             {/* Step Counter & Replay */}
             <div className="flex items-center gap-3">
               <span className="font-mono text-xs tabular-nums text-zinc-400">
-                {yearIndex + 1} / {editions.length}
+                {playing ? (
+                  <span className="text-teal-300">
+                    {playRound}/{totalPlayRounds}회
+                  </span>
+                ) : (
+                  `${yearIndex + 1} / ${editions.length}`
+                )}
               </span>
               <button
                 type="button"

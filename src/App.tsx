@@ -26,6 +26,10 @@ export default function App() {
   const [selectedId, setSelectedId] = React.useState<string>("")
   const [searchTerm, setSearchTerm] = React.useState("")
   const [playing, setPlaying] = React.useState(false)
+  const [playRound, setPlayRound] = React.useState(1)
+  const playRoundRef = React.useRef(1)
+  const yearIdxRef = React.useRef(0)
+  const TOTAL_PLAY_ROUNDS = 3
 
   const versionRef = React.useRef<string | undefined>(undefined)
   const checkingRef = React.useRef(false)
@@ -89,21 +93,27 @@ export default function App() {
   }, [currentEdition, selectedId])
 
   React.useEffect(() => {
+    const idx = editions.findIndex((e) => e.year === year)
+    if (idx >= 0) yearIdxRef.current = idx
+  }, [editions, year])
+
+  React.useEffect(() => {
     if (!playing || editions.length < 2) return
     const id = window.setInterval(() => {
-      setYear((prev) => {
-        const idx = editions.findIndex((e) => e.year === prev)
-        if (idx < 0 || idx >= editions.length - 1) {
-          setPlaying(false)
-          return editions.at(-1)!.year
-        }
-        const nextIdx = idx + 1
-        if (nextIdx === editions.length - 1) {
-          setPlaying(false)
-        }
-        return editions[nextIdx].year
-      })
-    }, 1650)
+      if (yearIdxRef.current < editions.length - 1) {
+        yearIdxRef.current += 1
+        setYear(editions[yearIdxRef.current].year)
+        return
+      }
+      if (playRoundRef.current < TOTAL_PLAY_ROUNDS) {
+        playRoundRef.current += 1
+        setPlayRound(playRoundRef.current)
+        yearIdxRef.current = 0
+        setYear(editions[0].year)
+        return
+      }
+      setPlaying(false)
+    }, 880)
     return () => window.clearInterval(id)
   }, [playing, editions])
 
@@ -113,7 +123,10 @@ export default function App() {
       setPlaying(false)
       return
     }
+    playRoundRef.current = 1
+    setPlayRound(1)
     if (year === editions.at(-1)?.year) {
+      yearIdxRef.current = 0
       setYear(editions[0].year)
     }
     setPlaying(true)
@@ -121,6 +134,9 @@ export default function App() {
 
   const handleReplay = React.useCallback(() => {
     if (editions.length < 2) return
+    playRoundRef.current = 1
+    setPlayRound(1)
+    yearIdxRef.current = 0
     setYear(editions[0].year)
     setPlaying(true)
   }, [editions])
@@ -198,6 +214,8 @@ export default function App() {
             }}
             onPageChange={setPage}
             playing={playing}
+            playRound={playRound}
+            totalPlayRounds={TOTAL_PLAY_ROUNDS}
             onTogglePlay={handleTogglePlay}
             onReplay={handleReplay}
             onSelectYear={(y) => {
