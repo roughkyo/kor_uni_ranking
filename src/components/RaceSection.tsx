@@ -444,7 +444,7 @@ export function RaceSection({
             RANK IS THE STORY · 01 / LIVE RACING CHART
           </div>
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-950 dark:text-white sm:text-4xl">
-            서로 추월하는 연도별 대학 레이스
+            연도별 대학 랭킹
           </h2>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
             {edition.year} 공시 · 일반대학 {edition.rows.length}개 단위 비교 · 재생 버튼을 누르거나 하단 타임라인을 움직여 순위 변화를 확인하세요.
