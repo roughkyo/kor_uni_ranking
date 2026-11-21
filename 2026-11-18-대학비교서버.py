@@ -16,11 +16,23 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parent
 PREFIX = "2026-11-18-"
 SOURCE = "https://www.academyinfo.go.kr/main/main2130/"
-FIELDS = ["st_gn_sd_fm_tr_1_ps_py_st_ct", "st_1_ps_py_et", "st_1_ps_py_sp", "ge_et_re"]
-UNITS = ["명", "천원", "원", "%"]
-FIELDS += ["ae_tn", "be_ae_re", "fm_tr_le_ce_re", "st_1_ps_py_bk_ct"]
-UNITS += ["천원", "%", "%", "권"]
-WEIGHTS = [10, 8, 18, 12, 20, 12, 8, 6]
+# 원자료 공시 9개 필드(인덱스 0..8) — 제외 사유 매핑과 1:1 대응
+FIELDS = [
+    "st_1_ps_py_et",      # 0: 학생 1인당 교육비 (천원)
+    "ae_tn",              # 1: 평균 등록금 (천원)
+    "st_1_ps_py_sp",      # 2: 재학생 1인당 장학금 (원)
+    "st_sd_fm_tr_ee_re",  # 3: 전임교원 확보율(재학생 기준, %)
+    "ge_et_re",           # 4: 졸업생 취업률 (%)
+    "be_ae_re",           # 5: 기숙사 수용률 (%)
+    "gn_ie_fm_rt_re",     # 6: 신입생 충원율 (%)
+    "fm_tr_le_ce_re",     # 7: 전임교원 강의 비율 (%)
+    "st_1_ps_py_bk_ct",   # 8: 학생 1인당 도서 자료 (권)
+]
+UNITS = ["천원", "천원", "원", "%", "%", "%", "%", "%", "권"]
+# 학생 Support 지수 10개 지표 배점 (합계 100점)
+# [교육비 22, 실부담등록금 16, 교육비환원율 12, 전임교원확보율 12, 취업률 10, 기숙사 8, 신입생충원율 7, 전임강의 5, 도서 4, 글로컬 4]
+WEIGHTS = [22, 16, 12, 12, 10, 8, 7, 5, 4]
+GLOCAL_BONUS = 4
 # 본지정 연도부터 적용하며 학교명은 공시 단위의 정식 명칭과 대조한다.
 GROUPS = {
     2023: "강원대학교 국립강릉원주대학교 강릉원주대학교 경상국립대학교 부산대학교 부산교육대학교 국립순천대학교 순천대학교 안동대학교 국립안동대학교 국립경국대학교 울산대학교 전북대학교 충북대학교 국립한국교통대학교 한국교통대학교 포항공과대학교 한림대학교",
@@ -53,6 +65,30 @@ def ranked(values):
     return result
 
 
+def pct_points(values, maximum):
+    """동점 평균 등수 기반 백분위 환산."""
+    n = len(values)
+    weights = ranked(values)
+    return [maximum * w / (2 * (n - 1)) for w in weights]
+
+
+def log_points(values, maximum, p_lo=0.02, p_hi=0.98):
+    """상하위 2% 윈저화 후 log1p 정규화해 실제 투자 규모 격차를 반영한다."""
+    ordered = sorted(values)
+    lo = ordered[int(len(ordered) * p_lo)]
+    hi = ordered[min(len(ordered) - 1, int(len(ordered) * p_hi))]
+    l_lo = math.log1p(max(0.0, lo))
+    l_hi = math.log1p(max(0.0, hi))
+    span = max(1e-9, l_hi - l_lo)
+    return [maximum * (math.log1p(max(0.0, min(hi, max(lo, v)))) - l_lo) / span for v in values]
+
+
+def linear_points(values, maximum, lo, hi):
+    """고정 구간 [lo, hi] 선형 환산."""
+    span = max(1e-9, hi - lo)
+    return [maximum * (min(hi, max(lo, v)) - lo) / span for v in values]
+
+
 def score(raw, year):
     rows = []
     excluded = []
@@ -66,8 +102,8 @@ def score(raw, year):
         campus = item["psbs_div_nm"]
         if campus != "본교":
             name += " · " + campus
-        values = []
-        years = []
+        raw_vals = []
+        raw_years = []
         reasons = []
         for i, field in enumerate(FIELDS):
             value = item.get(field)
@@ -78,44 +114,77 @@ def score(raw, year):
             if item[field + "_unit"] != UNITS[i]:
                 raise ValueError("공시 단위 변경")
             value = float(str(value).replace(",", ""))
-            if not math.isfinite(value) or value < 0 or (i == 3 and value > 100):
+            if not math.isfinite(value) or value < 0 or (i == 4 and value > 100):
                 raise ValueError("공시값 범위 오류")
-            if value == 0 and i != 5:
+            # 기숙사 수용률(5)과 신입생 충원율(6)은 실제 0% 공시값을 유효 인정한다.
+            if value == 0 and i not in (5, 6):
                 reasons.append(i)
-            values.append(value)
-            years.append(period)
-        if reasons or not item.get("et_st_ct"):
+            raw_vals.append(value)
+            raw_years.append(period)
+        et_raw = item.get("et_st_ct")
+        et_val = 0
+        if et_raw not in (None, "", "-"):
+            et_val = int(round(float(str(et_raw).replace(",", ""))))
+        if reasons or et_val <= 0:
             excluded.append({"name": name, "missing": reasons, "id": uid})
             continue
-        rows.append({"id": uid, "name": name, "region": item["pbnf_area_nm"],
-                     "values": values, "years": years, "points": []})
+
+        edu, tuition, schol, fac_rate, emp, dorm, fill, lec, books = raw_vals
+        net_tuition = round(max(0.0, tuition - schol / 1000.0), 2)
+        edu_return = round((edu / tuition) * 100.0, 1)
+        dorm_capped = round(min(100.0, dorm), 1)
+        fill_capped = round(min(100.0, fill), 1)
+
+        # 표시·산정용 9개 수치 [교육비, 실부담등록금, 교육비환원율, 전임교원확보율, 취업률, 기숙사, 신입생충원율, 전임강의, 도서]
+        values = [edu, net_tuition, edu_return, fac_rate, emp, dorm_capped, fill_capped, lec, books]
+        years = [
+            raw_years[0], raw_years[1], raw_years[0], raw_years[3], raw_years[4],
+            raw_years[5], raw_years[6], raw_years[7], raw_years[8],
+        ]
+        rows.append({
+            "id": uid,
+            "name": name,
+            "region": item["pbnf_area_nm"],
+            "students": et_val,
+            "tuition": tuition,
+            "scholarship": schol,
+            "values": values,
+            "years": years,
+            "points": [],
+        })
+
     n = len(rows)
     if n < 100:
         raise ValueError(f"{year}년 산정 가능 단위 {n}곳")
-    totals = [0] * n
-    for i, maximum in enumerate(WEIGHTS):
-        direction = -1 if i in (0, 4) else 1
-        weights = ranked([direction * row["values"][i] for row in rows])
-        for j, weight in enumerate(weights):
-            rows[j]["points"].append(maximum * weight / (2 * (n - 1)))
-            totals[j] += maximum * weight
-    for row, total in zip(rows, totals):
+
+    metric_points = [
+        log_points([r["values"][0] for r in rows], WEIGHTS[0]),                   # 0: 학생 1인당 교육비 (22)
+        pct_points([-r["values"][1] for r in rows], WEIGHTS[1]),                  # 1: 실부담 등록금 ↓ (16, 0원 동점)
+        log_points([r["values"][2] for r in rows], WEIGHTS[2]),                   # 2: 교육비 환원율 (12)
+        pct_points([min(150.0, r["values"][3]) for r in rows], WEIGHTS[3]),       # 3: 전임교원 확보율·재학생 기준 (12, 150% 캡)
+        pct_points([r["values"][4] for r in rows], WEIGHTS[4]),                   # 4: 졸업생 취업률 (10)
+        pct_points([r["values"][5] for r in rows], WEIGHTS[5]),                   # 5: 기숙사 수용률 (8, 100% 캡)
+        linear_points([r["values"][6] for r in rows], WEIGHTS[6], 60.0, 100.0),   # 6: 신입생 충원율 (7, 60~100% 선형)
+        pct_points([r["values"][7] for r in rows], WEIGHTS[7]),                   # 7: 전임교원 강의 비율 (5)
+        pct_points([r["values"][8] for r in rows], WEIGHTS[8]),                   # 8: 학생 1인당 도서 자료 (4)
+    ]
+
+    for j, row in enumerate(rows):
         name = row["name"].split(" · ")[0]
         start = DESIGNATED.get(name)
         active = bool(start and start <= year <= 2026 and not (name in CANCELLED and year >= 2026))
-        bonus = 6 if active else 0
+        bonus = float(GLOCAL_BONUS if active else 0)
         row["designation"] = start if start and start <= year else None
-        row["points"].append(bonus)
-        total += bonus * 2 * (n - 1)
-        row["weight"] = total
-        row["score"] = total / (2 * (n - 1))
-    rows.sort(key=lambda r: (-r["weight"], r["name"], r["id"]))
+        pts = [col[j] for col in metric_points] + [bonus]
+        row["points"] = pts
+        row["score"] = round(sum(pts), 6)
+
+    rows.sort(key=lambda r: (-r["score"], r["name"], r["id"]))
     last = None
     for i, row in enumerate(rows, 1):
-        weight = row.pop("weight")
-        if weight != last:
+        if row["score"] != last:
             rank = i
-        last = weight
+        last = row["score"]
         row["rank"] = rank
     return {"year": year, "rows": rows, "excluded": excluded, "total": len(raw)}
 
@@ -175,15 +244,15 @@ def combine(edition, names):
                            years=school["years"]+["",f"{year-3}–{year-1}",f"{year-3}–{year-1}"]))
     if len(result) < 100:
         raise ValueError("종합 비교 가능 대학이 100곳 미만")
-    peaks = [max(r["values"][i] for r in result) for i in (9,10)]
+    peaks = [max(r["values"][i] for r in result) for i in (10, 11)]
     for r in result:
         # 최댓값 대비 제곱근으로 연구량 격차를 줄인다. 모든 대학에 동일한 배점을 적용한다.
         points = [v / 2 for v in r["points"]]
-        for i, peak in zip((9,10), peaks):
+        for i, peak in zip((10, 11), peaks):
             points.append(25 * math.sqrt(r["values"][i] / peak))
         r["points"] = points
-        r["score"] = sum(points)
-    result.sort(key=lambda r: (-r["score"],r["name"],r["id"]))
+        r["score"] = round(sum(points), 6)
+    result.sort(key=lambda r: (-r["score"], r["name"], r["id"]))
     for i, r in enumerate(result):
         if i == 0 or result[i-1]["score"] != r["score"]:
             rank = i + 1

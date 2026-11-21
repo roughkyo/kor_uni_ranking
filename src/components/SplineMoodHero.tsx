@@ -467,7 +467,7 @@ export function SplineMoodHero({
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="text-4xl font-semibold leading-[1.08] tracking-[-0.04em] text-zinc-950 dark:font-medium dark:text-[#f5f5f5] sm:text-6xl lg:text-[68px]"
           >
-            {mode === "combined" ? "대학 공시 레이스" : "학생지원 레이스"}
+            {mode === "combined" ? "대학 공시 레이스" : "학생 Support 지수 랭킹"}
           </motion.h1>
 
           <motion.p
@@ -478,15 +478,15 @@ export function SplineMoodHero({
           >
             {mode === "combined" ? (
               <>
-                연구활동 50점과 학생지원 50점으로 비교하는
+                연구활동 50점과 학생 Support 지수 50점으로 비교하는
                 <br />
                 {yearRange} 전국 일반대학 {schoolCount}곳의 순위 흐름.
               </>
             ) : (
               <>
-                등록금·장학금·기숙사·글로컬대학 9가지 지표로 비교하는
+                교육비·실부담 등록금·환원율·교원확보율 등 10개 지표로 비교하는
                 <br />
-                {yearRange} 전국 일반대학 {schoolCount}곳의 학생지원 순위.
+                {yearRange} 전국 일반대학 {schoolCount}곳의 학생 Support 지수 랭킹.
               </>
             )}
           </motion.p>
@@ -537,7 +537,7 @@ export function SplineMoodHero({
                     : "text-zinc-600 hover:text-zinc-950 dark:text-white/50 dark:hover:text-white/85"
                 )}
               >
-                학생지원만
+                학생 Support 지수
               </button>
             </div>
           </motion.div>

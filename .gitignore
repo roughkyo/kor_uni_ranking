@@ -13,6 +13,7 @@ dist/
 npm-debug.log*
 __pycache__/
 *.pyc
+2026-11-18-대학비교공시판-*.json
 
 # OS & Editor
 .DS_Store

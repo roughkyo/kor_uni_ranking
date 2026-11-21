@@ -4,6 +4,9 @@ export interface UniversityRow {
   id: string
   name: string
   region: string
+  students?: number
+  tuition?: number
+  scholarship?: number
   values: (number | null)[]
   years: string[]
   points: number[]
@@ -48,30 +51,44 @@ export interface DisclosureStatus {
 }
 
 export const BASE_METRIC_LABELS = [
-  "전임교원 1인당 학생 수",
   "학생 1인당 교육비",
-  "재학생 1인당 장학금",
+  "실부담 등록금 (등록금−장학금)",
+  "교육비 환원율 (교육비÷등록금)",
+  "전임교원 확보율 (재학생 기준)",
   "졸업생 취업률",
-  "평균 등록금",
   "기숙사 수용률",
+  "신입생 충원율",
   "전임교원 강의 비율",
   "학생 1인당 도서 자료",
   "글로컬대학 본지정",
 ] as const
 
 export const BASE_METRIC_UNITS = [
-  "명",
   "천원",
-  "원",
+  "천원",
   "%",
-  "천원",
+  "%",
+  "%",
+  "%",
   "%",
   "%",
   "권",
   "",
 ] as const
 
-export const BASE_METRIC_CAPS = [10, 8, 18, 12, 20, 12, 8, 6, 6] as const
+export const BASE_METRIC_CAPS = [22, 16, 12, 12, 10, 8, 7, 5, 4, 4] as const
+
+export const RAW_EXCLUSION_LABELS = [
+  "학생 1인당 교육비",
+  "평균 등록금",
+  "재학생 1인당 장학금",
+  "전임교원 확보율(재학생 기준)",
+  "졸업생 취업률",
+  "기숙사 수용률",
+  "신입생 충원율",
+  "전임교원 강의 비율",
+  "학생 1인당 도서 자료",
+] as const
 
 export const COMBINED_EXTRA_LABELS = ["연구 출판물 (3개년)", "받은 인용 (3개년)"] as const
 export const COMBINED_EXTRA_UNITS = ["건", "회"] as const
@@ -113,7 +130,7 @@ export function getMetricMeta(mode: CompareMode) {
 export function formatExclusionReason(row: ExcludedRow): string {
   if (row.reason) return row.reason
   if (row.missing && row.missing.length > 0) {
-    return row.missing.map((i) => BASE_METRIC_LABELS[i] ?? "공시항목").join(", ")
+    return row.missing.map((i) => RAW_EXCLUSION_LABELS[i] ?? "공시항목").join(", ")
   }
   return "재학생 수"
 }

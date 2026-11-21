@@ -169,6 +169,7 @@ export default function App() {
   const handleModeChange = React.useCallback((nextMode: CompareMode) => {
     setPlaying(false)
     setMode(nextMode)
+    setSelectedId("")
     setPage(0)
     setTablePage(0)
   }, [])

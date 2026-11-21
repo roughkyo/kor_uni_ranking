@@ -66,7 +66,7 @@ export function RankingTableSection({
               02 / COMPLETE INDEX
             </div>
             <h2 className="text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-white sm:text-3xl">
-              {mode === "combined" ? "종합비교 전체 순위표" : "학생지원지수 전체 순위표"}
+              {mode === "combined" ? "종합비교 전체 순위표" : "학생 Support 지수 전체 순위표"}
             </h2>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               {searchTerm.trim()

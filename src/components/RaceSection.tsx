@@ -475,7 +475,7 @@ export function RaceSection({
                   : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
               )}
             >
-              학생지원만
+              학생 Support 지수
             </button>
           </div>
 
@@ -551,7 +551,7 @@ export function RaceSection({
             <div>
               <div className="flex items-center gap-2.5">
                 <h3 className="text-lg font-bold tracking-tight text-zinc-950 dark:text-white sm:text-xl">
-                  {mode === "combined" ? "종합 순위 레이스" : "학생지원 순위 레이스"}
+                  {mode === "combined" ? "종합 순위 레이스" : "학생 Support 지수 랭킹"}
                 </h3>
                 <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 font-mono text-[11px] text-zinc-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-300">
                   {visible[0]?.rank ?? 1}–{visible.at(-1)?.rank ?? pageSize}위
@@ -912,7 +912,8 @@ export function RaceSection({
                     {selectedRow.name}
                   </h3>
                   <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {selectedRow.region} · 전년 대비{" "}
+                    {selectedRow.region}
+                    {selectedRow.students ? ` · 재학생 ${selectedRow.students.toLocaleString("ko-KR")}명` : ""} · 전년 대비{" "}
                     <span
                       className={cn(
                         "font-mono font-semibold",
@@ -946,8 +947,8 @@ export function RaceSection({
                 const cap = caps[i] ?? 1
                 const ratio = Math.min(100, (pts / cap) * 100)
                 const val = selectedRow.values[i]
-                const direction = i === 8 ? "" : i === 0 || i === 4 ? "↓" : "↑"
-                const isResearch = i >= 9
+                const direction = i === 9 ? "" : i === 1 ? "↓" : "↑"
+                const isResearch = i >= 10
 
                 return (
                   <div key={label} className="space-y-1.5">
@@ -981,16 +982,24 @@ export function RaceSection({
                     </div>
 
                     <div className="font-mono text-[10px] text-zinc-500">
-                      {i === 8
+                      {i === 9
                         ? pts > 0
                           ? `${selectedRow.designation}년 본지정 (+${cap}점 반영)`
                           : selectedRow.designation
                             ? "해당 연도 가점 없음"
                             : "본지정 가점 없음"
                         : val !== null && val !== undefined
-                          ? `${selectedRow.years[i]} · ${val.toLocaleString("ko-KR", {
-                              maximumFractionDigits: 2,
-                            })}${units[i]}`
+                          ? i === 1 && selectedRow.tuition !== undefined && selectedRow.scholarship !== undefined
+                            ? `${selectedRow.years[i]} · ${val.toLocaleString("ko-KR", {
+                                maximumFractionDigits: 1,
+                              })}${units[i]} (등록금 ${selectedRow.tuition.toLocaleString("ko-KR", {
+                                maximumFractionDigits: 0,
+                              })} − 장학금 ${(selectedRow.scholarship / 1000).toLocaleString("ko-KR", {
+                                maximumFractionDigits: 0,
+                              })}천원)`
+                            : `${selectedRow.years[i]} · ${val.toLocaleString("ko-KR", {
+                                maximumFractionDigits: 2,
+                              })}${units[i]}`
                           : "—"}
                     </div>
                   </div>
@@ -1032,7 +1041,7 @@ export function RaceSection({
                   OpenAlex 기관 원문 <ExternalLink className="h-3 w-3" />
                 </a>
               ) : null}
-              {selectedRow.points[8] && selectedRow.designation && GLOCAL_LINKS[selectedRow.designation] ? (
+              {selectedRow.points[9] && selectedRow.designation && GLOCAL_LINKS[selectedRow.designation] ? (
                 <a
                   href={GLOCAL_LINKS[selectedRow.designation]}
                   target="_blank"

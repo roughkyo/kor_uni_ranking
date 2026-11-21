@@ -53,7 +53,7 @@ export function MethodologySection({ edition, mode }: MethodologySectionProps) {
                 순위는 어떻게 계산했나요?
               </div>
               <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                종합비교(연구 50 + 학생지원 50) 산식, 배점표, 글로컬대학 반영 기준 및 제외 목록 ({edition.excluded.length}곳)
+                종합비교(연구 50 + 학생 Support 지수 50) 산식, 배점표, 글로컬대학 반영 기준 및 제외 목록 ({edition.excluded.length}곳)
               </div>
             </div>
           </div>
@@ -70,7 +70,7 @@ export function MethodologySection({ edition, mode }: MethodologySectionProps) {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50 p-5 dark:border-white/8 dark:bg-black/35">
                 <h3 className="text-base font-bold text-orange-700 dark:text-orange-300">
-                  종합비교 · 연구활동 50점 + 학생지원 50점
+                  종합비교 · 연구활동 50점 + 학생 Support 지수 50점
                 </h3>
                 <p className="mt-2.5 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
                   각 공시연도 직전 3개년의 OpenAlex 출판물 수와 인용 수를 각각 25점으로 환산합니다.
@@ -78,10 +78,10 @@ export function MethodologySection({ edition, mode }: MethodologySectionProps) {
                   <code className="rounded bg-orange-100 px-1.5 py-0.5 font-mono text-[11px] text-orange-900 dark:bg-white/10 dark:text-orange-200">
                     25 × √(대학 수치 ÷ 비교 집단 최댓값)
                   </code>
-                  이며, 학생지원 원점수(100점)의 절반을 더합니다.
+                  이며, 학생 Support 지수 원점수(100점)의 절반을 더합니다.
                 </p>
                 <p className="mt-2.5 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-                  국내 교육기관의 한국어 이름과 공시 대학명을 일대일로 대조합니다. 고유하게 확인되지 않거나 3개년 집계가 부족한 대학은 종합 미산정으로 표시하며 학생지원 탭에서 별도 확인할 수 있습니다.
+                  국내 교육기관의 한국어 이름과 공시 대학명을 일대일로 대조합니다. 고유하게 확인되지 않거나 3개년 집계가 부족한 대학은 종합 미산정으로 표시하며 학생 Support 지수 탭에서 별도 확인할 수 있습니다.
                 </p>
                 <a
                   href="https://help.openalex.org/data/common-attributes/"
@@ -95,27 +95,32 @@ export function MethodologySection({ edition, mode }: MethodologySectionProps) {
 
               <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50 p-5 dark:border-white/8 dark:bg-black/35">
                 <h3 className="text-base font-bold text-teal-700 dark:text-cyan-300">
-                  학생지원 · 공시 및 사업 100점
+                  학생 Support 지수 · 공시 및 사업 100점 (10개 지표)
                 </h3>
                 <p className="mt-2.5 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
-                  일반대학 본·분교 및 캠퍼스를 대학알리미 공시 단위로 비교합니다. 공시 8개 항목은 해당 연도 비교 집단의 백분위로 환산하며,
-                  항목 점수는{" "}
+                  일반대학 본·분교 및 캠퍼스를 대학알리미 공시 단위로 비교합니다. 명목 등록금·장학금 중복 계산을 없앤{" "}
+                  <strong className="text-zinc-900 dark:text-zinc-100">실부담 등록금(등록금−장학금, 하한 0원)</strong>,{" "}
+                  <strong className="text-zinc-900 dark:text-zinc-100">교육비 환원율(교육비÷등록금)</strong>,{" "}
+                  <strong className="text-zinc-900 dark:text-zinc-100">전임교원 확보율(재학생 기준)</strong>,{" "}
+                  <strong className="text-zinc-900 dark:text-zinc-100">신입생 충원율(60~100% 선형)</strong>을 반영합니다.
+                  1인당 교육비·환원율은 상하위 2% 윈저화{" "}
                   <code className="rounded bg-teal-100 px-1.5 py-0.5 font-mono text-[11px] text-teal-900 dark:bg-white/10 dark:text-cyan-200">
-                    배점 × (N − 평균 등수) ÷ (N − 1)
+                    log(1+x)
                   </code>
-                  입니다.
+                  로 실제 투자 격차를 살리고, 기숙사(100%)·교원확보율(150%)은 이상치 상한 캡을 적용합니다.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[11px]">
                   {[
-                    "등록금 20",
-                    "장학금 18",
-                    "기숙사 12",
-                    "취업률 12",
-                    "교원당 학생 10",
-                    "교육비 8",
-                    "전임강의 8",
-                    "도서 6",
-                    "글로컬 6",
+                    "1인당 교육비 22",
+                    "실부담 등록금 16",
+                    "교육비 환원율 12",
+                    "전임교원 확보율 12",
+                    "취업률 10",
+                    "기숙사 8",
+                    "신입생 충원율 7",
+                    "전임강의 5",
+                    "도서 4",
+                    "글로컬 4",
                   ].map((tag) => (
                     <span
                       key={tag}
@@ -126,7 +131,7 @@ export function MethodologySection({ edition, mode }: MethodologySectionProps) {
                   ))}
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-                  글로컬대학은 2023~2025년 본지정 명단에 따라 지정연도부터 6점을 반영하며, 2026년 충북대·국립한국교통대 지정 취소를 적용했습니다.
+                  글로컬대학은 2023~2025년 본지정 명단에 따라 지정연도부터 4점을 반영하며, 2026년 충북대·국립한국교통대 지정 취소를 적용했습니다.
                 </p>
               </div>
             </div>
