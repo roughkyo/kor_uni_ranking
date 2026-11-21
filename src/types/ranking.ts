@@ -1,5 +1,10 @@
 export type CompareMode = "combined" | "support"
 
+export interface Snu10Info {
+  year: number
+  track: string
+}
+
 export interface UniversityRow {
   id: string
   name: string
@@ -11,6 +16,7 @@ export interface UniversityRow {
   years: string[]
   points: number[]
   designation: number | null
+  snu10?: Snu10Info | null
   score: number
   rank: number
   source?: string
@@ -61,6 +67,7 @@ export const BASE_METRIC_LABELS = [
   "전임교원 강의 비율",
   "학생 1인당 도서 자료",
   "글로컬대학 본지정",
+  "서울대 10개 만들기",
 ] as const
 
 export const BASE_METRIC_UNITS = [
@@ -74,9 +81,10 @@ export const BASE_METRIC_UNITS = [
   "%",
   "권",
   "",
+  "",
 ] as const
 
-export const BASE_METRIC_CAPS = [22, 16, 12, 12, 10, 8, 7, 5, 4, 4] as const
+export const BASE_METRIC_CAPS = [20, 16, 12, 12, 10, 8, 6, 5, 4, 3, 4] as const
 
 export const RAW_EXCLUSION_LABELS = [
   "학생 1인당 교육비",

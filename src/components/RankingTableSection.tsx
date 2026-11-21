@@ -145,6 +145,11 @@ export function RankingTableSection({
                           글로컬 {item.designation}
                         </span>
                       ) : null}
+                      {item.snu10 ? (
+                        <span className="ml-1.5 hidden rounded-full bg-violet-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-violet-800 dark:bg-violet-500/20 dark:text-violet-200 md:inline-block">
+                          서울대10개 {item.snu10.year}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="hidden px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400 sm:table-cell">
                       {item.region}

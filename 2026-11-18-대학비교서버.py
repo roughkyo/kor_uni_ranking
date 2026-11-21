@@ -29,10 +29,17 @@ FIELDS = [
     "st_1_ps_py_bk_ct",   # 8: 학생 1인당 도서 자료 (권)
 ]
 UNITS = ["천원", "천원", "원", "%", "%", "%", "%", "%", "권"]
-# 학생 Support 지수 10개 지표 배점 (합계 100점)
-# [교육비 22, 실부담등록금 16, 교육비환원율 12, 전임교원확보율 12, 취업률 10, 기숙사 8, 신입생충원율 7, 전임강의 5, 도서 4, 글로컬 4]
-WEIGHTS = [22, 16, 12, 12, 10, 8, 7, 5, 4]
-GLOCAL_BONUS = 4
+# 학생 Support 지수 11개 지표 배점 (합계 100점)
+# [교육비 20, 실부담등록금 16, 교육비환원율 12, 전임교원확보율 12, 취업률 10, 기숙사 8, 신입생충원율 6, 전임강의 5, 도서 4, 글로컬 3, 서울대10개 4]
+WEIGHTS = [20, 16, 12, 12, 10, 8, 6, 5, 4]
+GLOCAL_BONUS = 3
+SNU10_BONUS = 4
+# '서울대 10개 만들기' 2026년 1차 집중 지원 거점국립대 선정 현황 (교육부 2026.09.01 발표)
+SNU10 = {
+    "부산대학교": (2026, "제조·해양산업 AI 전환(AX) 혁신 선도 국토공간 대전환 플랫폼"),
+    "전남대학교": (2026, "서남권 메가프로젝트 선도 첨단반도체·미래에너지·AI 특성화"),
+    "충남대학교": (2026, "중부권 4대 성장엔진 산업·연구인력 배출 국가 거점"),
+}
 # 본지정 연도부터 적용하며 학교명은 공시 단위의 정식 명칭과 대조한다.
 GROUPS = {
     2023: "강원대학교 국립강릉원주대학교 강릉원주대학교 경상국립대학교 부산대학교 부산교육대학교 국립순천대학교 순천대학교 안동대학교 국립안동대학교 국립경국대학교 울산대학교 전북대학교 충북대학교 국립한국교통대학교 한국교통대학교 포항공과대학교 한림대학교",
@@ -173,9 +180,15 @@ def score(raw, year):
         name = row["name"].split(" · ")[0]
         start = DESIGNATED.get(name)
         active = bool(start and start <= year <= 2026 and not (name in CANCELLED and year >= 2026))
-        bonus = float(GLOCAL_BONUS if active else 0)
+        glocal_pts = float(GLOCAL_BONUS if active else 0)
         row["designation"] = start if start and start <= year else None
-        pts = [col[j] for col in metric_points] + [bonus]
+
+        snu10_info = SNU10.get(name)
+        snu10_active = bool(snu10_info and snu10_info[0] <= year)
+        snu10_pts = float(SNU10_BONUS if snu10_active else 0)
+        row["snu10"] = {"year": snu10_info[0], "track": snu10_info[1]} if snu10_active else None
+
+        pts = [col[j] for col in metric_points] + [glocal_pts, snu10_pts]
         row["points"] = pts
         row["score"] = round(sum(pts), 6)
 
@@ -240,15 +253,15 @@ def combine(edition, names):
         works = sum(a["works_count"] for a in periods)
         citations = sum(a["cited_by_count"] for a in periods)
         result.append(dict(school, source=institution["id"], supportRank=school["rank"],
-                           values=school["values"]+[None,works,citations],
-                           years=school["years"]+["",f"{year-3}–{year-1}",f"{year-3}–{year-1}"]))
+                           values=school["values"]+[None,None,works,citations],
+                           years=school["years"]+["","",f"{year-3}–{year-1}",f"{year-3}–{year-1}"]))
     if len(result) < 100:
         raise ValueError("종합 비교 가능 대학이 100곳 미만")
-    peaks = [max(r["values"][i] for r in result) for i in (10, 11)]
+    peaks = [max(r["values"][i] for r in result) for i in (11, 12)]
     for r in result:
         # 최댓값 대비 제곱근으로 연구량 격차를 줄인다. 모든 대학에 동일한 배점을 적용한다.
         points = [v / 2 for v in r["points"]]
-        for i, peak in zip((10, 11), peaks):
+        for i, peak in zip((11, 12), peaks):
             points.append(25 * math.sqrt(r["values"][i] / peak))
         r["points"] = points
         r["score"] = round(sum(points), 6)

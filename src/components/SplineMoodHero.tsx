@@ -484,7 +484,7 @@ export function SplineMoodHero({
               </>
             ) : (
               <>
-                교육비·실부담 등록금·환원율·교원확보율 등 10개 지표로 비교하는
+                교육비·실부담 등록금·환원율·서울대10개 등 11개 지표로 비교하는
                 <br />
                 {yearRange} 전국 일반대학 {schoolCount}곳의 학생 Support 지수 랭킹.
               </>

@@ -53,6 +53,8 @@ const GLOCAL_LINKS: Record<number, string> = {
   2025: "https://csu.chosun.ac.kr/bbs/chosun/72/271857/artclView.do",
 }
 
+const SNU10_OFFICIAL_URL = "https://blog.naver.com/moeblog/224397499595"
+
 interface BarSwatch {
   bg: string
   activeBg: string
@@ -658,6 +660,12 @@ export function RaceSection({
                         className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-white bg-amber-400 dark:border-[#0d1017]"
                       />
                     ) : null}
+                    {row.snu10 ? (
+                      <span
+                        title={`서울대 10개 만들기 ${row.snu10.year} 선정`}
+                        className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border border-white bg-violet-500 dark:border-[#0d1017]"
+                      />
+                    ) : null}
                   </span>
 
                   {/* 3. University Name & Region Sublabel */}
@@ -907,6 +915,11 @@ export function RaceSection({
                         글로컬 {selectedRow.designation}
                       </span>
                     ) : null}
+                    {selectedRow.snu10 ? (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-800 dark:bg-violet-500/25 dark:text-violet-200">
+                        서울대10개 {selectedRow.snu10.year}
+                      </span>
+                    ) : null}
                   </div>
                   <h3 className="mt-1 text-xl font-extrabold tracking-tight text-zinc-950 dark:text-white sm:text-2xl">
                     {selectedRow.name}
@@ -947,8 +960,9 @@ export function RaceSection({
                 const cap = caps[i] ?? 1
                 const ratio = Math.min(100, (pts / cap) * 100)
                 const val = selectedRow.values[i]
-                const direction = i === 9 ? "" : i === 1 ? "↓" : "↑"
-                const isResearch = i >= 10
+                const direction = i === 9 || i === 10 ? "" : i === 1 ? "↓" : "↑"
+                const isResearch = i >= 11
+                const isSnu10 = i === 10
 
                 return (
                   <div key={label} className="space-y-1.5">
@@ -973,7 +987,9 @@ export function RaceSection({
                           "h-full rounded-full",
                           isResearch
                             ? "bg-gradient-to-r from-orange-600 to-amber-500 dark:from-orange-600/80 dark:to-amber-400/90"
-                            : "bg-gradient-to-r from-teal-600 to-emerald-500 dark:from-teal-600/80 dark:to-emerald-400/85"
+                            : isSnu10
+                              ? "bg-gradient-to-r from-violet-600 to-purple-500 dark:from-violet-500 dark:to-purple-400"
+                              : "bg-gradient-to-r from-teal-600 to-emerald-500 dark:from-teal-600/80 dark:to-emerald-400/85"
                         )}
                         initial={false}
                         animate={{ width: `${ratio}%` }}
@@ -988,19 +1004,23 @@ export function RaceSection({
                           : selectedRow.designation
                             ? "해당 연도 가점 없음"
                             : "본지정 가점 없음"
-                        : val !== null && val !== undefined
-                          ? i === 1 && selectedRow.tuition !== undefined && selectedRow.scholarship !== undefined
-                            ? `${selectedRow.years[i]} · ${val.toLocaleString("ko-KR", {
-                                maximumFractionDigits: 1,
-                              })}${units[i]} (등록금 ${selectedRow.tuition.toLocaleString("ko-KR", {
-                                maximumFractionDigits: 0,
-                              })} − 장학금 ${(selectedRow.scholarship / 1000).toLocaleString("ko-KR", {
-                                maximumFractionDigits: 0,
-                              })}천원)`
-                            : `${selectedRow.years[i]} · ${val.toLocaleString("ko-KR", {
-                                maximumFractionDigits: 2,
-                              })}${units[i]}`
-                          : "—"}
+                        : i === 10
+                          ? pts > 0 && selectedRow.snu10
+                            ? `${selectedRow.snu10.year}년 1차 선정 (+${cap}점) · ${selectedRow.snu10.track}`
+                            : "해당 연도 선정 가점 없음"
+                          : val !== null && val !== undefined
+                            ? i === 1 && selectedRow.tuition !== undefined && selectedRow.scholarship !== undefined
+                              ? `${selectedRow.years[i]} · ${val.toLocaleString("ko-KR", {
+                                  maximumFractionDigits: 1,
+                                })}${units[i]} (등록금 ${selectedRow.tuition.toLocaleString("ko-KR", {
+                                  maximumFractionDigits: 0,
+                                })} − 장학금 ${(selectedRow.scholarship / 1000).toLocaleString("ko-KR", {
+                                  maximumFractionDigits: 0,
+                                })}천원)`
+                              : `${selectedRow.years[i]} · ${val.toLocaleString("ko-KR", {
+                                  maximumFractionDigits: 2,
+                                })}${units[i]}`
+                            : "—"}
                     </div>
                   </div>
                 )
@@ -1049,6 +1069,16 @@ export function RaceSection({
                   className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-zinc-700 transition-colors hover:border-zinc-400 hover:text-zinc-950 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-300 dark:hover:border-orange-400/40 dark:hover:text-white"
                 >
                   글로컬 본지정 자료 <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : null}
+              {selectedRow.snu10 ? (
+                <a
+                  href={SNU10_OFFICIAL_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 font-medium text-violet-800 transition-colors hover:border-violet-400 dark:border-violet-400/30 dark:bg-violet-500/15 dark:text-violet-200 dark:hover:border-violet-300/60"
+                >
+                  서울대 10개 만들기 공식 발표 <ExternalLink className="h-3 w-3" />
                 </a>
               ) : null}
               {selectedRow.name === "서울대학교" ? (

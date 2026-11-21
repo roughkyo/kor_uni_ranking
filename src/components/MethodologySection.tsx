@@ -95,14 +95,16 @@ export function MethodologySection({ edition, mode }: MethodologySectionProps) {
 
               <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50 p-5 dark:border-white/8 dark:bg-black/35">
                 <h3 className="text-base font-bold text-teal-700 dark:text-cyan-300">
-                  학생 Support 지수 · 공시 및 사업 100점 (10개 지표)
+                  학생 Support 지수 · 공시 및 국가육성사업 100점 (11개 지표)
                 </h3>
                 <p className="mt-2.5 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
                   일반대학 본·분교 및 캠퍼스를 대학알리미 공시 단위로 비교합니다. 명목 등록금·장학금 중복 계산을 없앤{" "}
                   <strong className="text-zinc-900 dark:text-zinc-100">실부담 등록금(등록금−장학금, 하한 0원)</strong>,{" "}
                   <strong className="text-zinc-900 dark:text-zinc-100">교육비 환원율(교육비÷등록금)</strong>,{" "}
                   <strong className="text-zinc-900 dark:text-zinc-100">전임교원 확보율(재학생 기준)</strong>,{" "}
-                  <strong className="text-zinc-900 dark:text-zinc-100">신입생 충원율(60~100% 선형)</strong>을 반영합니다.
+                  <strong className="text-zinc-900 dark:text-zinc-100">신입생 충원율(60~100% 선형)</strong>에 더해
+                  국가 대형 거점국립대 육성 정책인{" "}
+                  <strong className="text-zinc-900 dark:text-zinc-100">‘서울대 10개 만들기’ 선정 가점</strong>을 반영합니다.
                   1인당 교육비·환원율은 상하위 2% 윈저화{" "}
                   <code className="rounded bg-teal-100 px-1.5 py-0.5 font-mono text-[11px] text-teal-900 dark:bg-white/10 dark:text-cyan-200">
                     log(1+x)
@@ -111,16 +113,17 @@ export function MethodologySection({ edition, mode }: MethodologySectionProps) {
                 </p>
                 <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[11px]">
                   {[
-                    "1인당 교육비 22",
+                    "1인당 교육비 20",
                     "실부담 등록금 16",
                     "교육비 환원율 12",
                     "전임교원 확보율 12",
                     "취업률 10",
                     "기숙사 8",
-                    "신입생 충원율 7",
+                    "신입생 충원율 6",
                     "전임강의 5",
                     "도서 4",
-                    "글로컬 4",
+                    "글로컬 3",
+                    "서울대10개 4",
                   ].map((tag) => (
                     <span
                       key={tag}
@@ -131,8 +134,27 @@ export function MethodologySection({ edition, mode }: MethodologySectionProps) {
                   ))}
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-                  글로컬대학은 2023~2025년 본지정 명단에 따라 지정연도부터 4점을 반영하며, 2026년 충북대·국립한국교통대 지정 취소를 적용했습니다.
+                  글로컬대학은 2023~2025년 본지정 명단에 따라 지정연도부터 3점(2026년 충북대·국립한국교통대 지정 취소 적용),
+                  ‘서울대 10개 만들기’는 2026년 1차 집중 지원 선정 거점국립대(부산대·전남대·충남대)에 2026년부터 4점을 반영했습니다.
                 </p>
+                <div className="mt-2.5 flex flex-wrap gap-3 text-xs">
+                  <a
+                    href="https://blog.naver.com/moeblog/224397499595"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-teal-700 hover:underline dark:text-cyan-300"
+                  >
+                    교육부 ‘서울대 10개 만들기’ 발표 <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <a
+                    href="https://namu.wiki/w/%EC%84%9C%EC%9A%B8%EB%8C%80%2010%EA%B0%9C%20%EB%A7%8C%EB%93%A4%EA%B8%B0"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-zinc-600 hover:underline dark:text-zinc-400"
+                  >
+                    정책 개요 참고 <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
               </div>
             </div>
 
