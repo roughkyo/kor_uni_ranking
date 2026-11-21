@@ -392,7 +392,7 @@ export function SplineMoodHero({
     <section
       ref={sectionRef}
       id="top"
-      className="relative flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#f5f5f2] transition-colors duration-300 dark:bg-[#0b0b0c]"
+      className="relative flex min-h-[80svh] w-full flex-col justify-between overflow-hidden bg-[#f5f5f2] transition-colors duration-300 dark:bg-[#0b0b0c]"
     >
       {/* Full-bleed Diagonal Fluted Glass + Interactive Magnifier Loupe */}
       <div
@@ -402,7 +402,7 @@ export function SplineMoodHero({
       />
 
       {/* Minimal Top Bar */}
-      <header className="relative z-20 mx-auto flex w-full max-w-[1440px] items-center justify-between px-6 py-7 md:px-12">
+      <header className="relative z-20 mx-auto flex w-full max-w-[1440px] items-center justify-between px-6 py-5 md:px-12 md:py-6">
         <a
           href="#top"
           className="flex items-center gap-2.5 text-sm font-medium tracking-[-0.02em] text-zinc-900 transition-opacity hover:opacity-80 dark:text-white/90"
@@ -459,7 +459,7 @@ export function SplineMoodHero({
       </header>
 
       {/* Lower-Left Editorial Typography */}
-      <div className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-1 flex-col justify-end px-6 pb-14 md:px-12 md:pb-16">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-1 flex-col justify-end px-6 pb-10 md:px-12 md:pb-12">
         <div className="max-w-xl">
           <motion.h1
             initial={{ opacity: 0, y: 18 }}
@@ -547,7 +547,7 @@ export function SplineMoodHero({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.28 }}
-            className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-zinc-500 dark:text-white/38"
+            className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-zinc-500 dark:text-white/38"
           >
             <span>진학 참고용 · 자체 산정</span>
             <span>·</span>
